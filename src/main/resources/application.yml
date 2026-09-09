@@ -1,0 +1,30 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: ms-barriodigital-bff
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Reemplazar TENANT_ID cuando exista EP1-01.
+          # Ejemplo: https://login.microsoftonline.com/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/v2.0
+          issuer-uri: ${AZURE_ISSUER_URI:https://login.microsoftonline.com/common/v2.0}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+---
+# Arranque local sin Azure:
+# .\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=dev
+spring:
+  config:
+    activate:
+      on-profile: dev
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration
