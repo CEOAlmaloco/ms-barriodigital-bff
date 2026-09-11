@@ -13,6 +13,11 @@ spring:
           # Audience del API (App ID URI). También se acepta el GUID puro vía AZURE_AUDIENCES.
           audiences: ${AZURE_AUDIENCES:api://a0773f3e-abc6-4b53-86fc-9d33a2eddef3}
 
+# EP1-16: origen del Angular local. Separar varios con coma si hace falta.
+barriodigital:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+
 management:
   endpoints:
     web:

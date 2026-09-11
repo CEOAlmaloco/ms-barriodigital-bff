@@ -17,15 +17,36 @@ Con `dev` no se exige JWT. **No usar `dev` en la demo de EP1.**
 
 ## Arranque con validación JWT (EP1-12)
 
-Los defaults de `application.yml` ya apuntan al tenant del equipo. Podés sobreescribir:
+Los valores por defecto de `application.yml` ya apuntan al tenant del equipo. Si necesita cambiarlos:
 
 ```powershell
-# Opcional si usás los defaults del yml
 $env:AZURE_ISSUER_URI = "https://login.microsoftonline.com/ce6e98c4-63f0-4b79-83e5-20925b5fada2/v2.0"
 $env:AZURE_AUDIENCES  = "api://a0773f3e-abc6-4b53-86fc-9d33a2eddef3"
 
 .\mvnw.cmd spring-boot:run
 ```
+
+## CORS para Angular (EP1-16)
+
+El front corre en `http://localhost:4200` y el BFF en `8080`. Sin CORS, el navegador bloquea las llamadas aunque el JWT sea válido.
+
+- Origen permitido: `http://localhost:4200` (configurable con `CORS_ALLOWED_ORIGINS`)
+- Métodos: GET, POST, PUT, DELETE, PATCH, OPTIONS
+- Headers: `Authorization`, `Content-Type`
+- No se usa origen `*` porque se envía el Bearer
+
+Prueba de preflight:
+
+```powershell
+curl.exe -i -X OPTIONS http://localhost:8080/api/ping `
+  -H "Origin: http://localhost:4200" `
+  -H "Access-Control-Request-Method: GET" `
+  -H "Access-Control-Request-Headers: Authorization, Content-Type"
+```
+
+Debe responder **200** con `Access-Control-Allow-Origin: http://localhost:4200`.
+
+El API Gateway con CORS de borde queda para EP2; en EP1 el BFF atiende al Angular directo.
 
 ## Laboratorio Postman / curl (criterio EP1-12)
 
@@ -72,6 +93,7 @@ curl.exe http://localhost:8080/actuator/health
 | Firma | JWKS de Entra (`fromIssuerLocation`) |
 | Expiración (`exp`) | validador default de Spring |
 | Audience | `AudienceValidator` vs `AZURE_AUDIENCES` / yml |
+| CORS | origen `localhost:4200`, sin `*` (EP1-16) |
 
 ## Tests
 
@@ -79,8 +101,8 @@ curl.exe http://localhost:8080/actuator/health
 .\mvnw.cmd test
 ```
 
-## Qué NO está aún (a propósito)
+## Qué todavía no está (a propósito)
 
-- Autorización por rol → 403 (EP1-13)
+- Autorización por rol → 403 (EP1-13, otro PR)
 - Orquestación a `ms-requests` (EP1-15)
 - Dockerfile (EP1-24)
