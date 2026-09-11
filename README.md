@@ -17,7 +17,7 @@ Con `dev` no se exige JWT. **No usar `dev` en la demo de EP1.**
 
 ## Arranque con validación JWT (EP1-12)
 
-Los defaults de `application.yml` ya apuntan al tenant del equipo. Podés sobreescribir:
+Los defaults de `application.yml` ya apuntan al tenant del equipo. Se puede sobreescribir:
 
 ```powershell
 # Opcional si usás los defaults del yml
@@ -52,7 +52,7 @@ Esperado: **200** con `subject` y `roles`.
 
 ### 3) Audience incorrecto → 401
 
-Usá un token de otra app (otro `aud`) o forzá `AZURE_AUDIENCES=api://audience-que-no-es` y reutilizá un token bueno: el BFF responde **401**.
+Usá un token de otra app (otro `aud`) o fuerza `AZURE_AUDIENCES=api://audience-que-no-es` y reutilizá un token bueno: el BFF responde **401**.
 
 ### 4) Token expirado → 401
 
