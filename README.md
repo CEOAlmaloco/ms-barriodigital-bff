@@ -79,8 +79,13 @@ curl.exe http://localhost:8080/actuator/health
 .\mvnw.cmd test
 ```
 
+## Git / secretos (EP1-19)
+
+Ignorados: `target/`, `.env`, wallets (`*.pem`, `wallet/`), `application-local.yml`.  
+Usá `.env.example` como plantilla. Tras `.\mvnw.cmd package`, `git status` no debe listar `target/`.
+
 ## Qué NO está aún (a propósito)
 
-- Autorización por rol → 403 (EP1-13)
+- Autorización por rol → 403 (EP1-13) — en PR aparte
 - Orquestación a `ms-requests` (EP1-15)
 - Dockerfile (EP1-24)
