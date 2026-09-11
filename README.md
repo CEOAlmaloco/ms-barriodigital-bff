@@ -1,16 +1,23 @@
 # ms-barriodigital-bff
 
-BFF de **BarrioDigital**: valida el JWT de Microsoft Entra ID (issuer, audience, firma, `exp`) y expone `/api/ping`.
+BFF de **BarrioDigital**: valida el JWT de Microsoft Entra ID y autoriza por App Roles.
 
 Puerto: **8080**
 
-Valores del contrato: `barriodigital-infra` → `docs/decisiones.md` (EP1-03).
+Contrato: `barriodigital-infra` → `docs/decisiones.md`.
+
+## Endpoints
+
+| Ruta | Auth | Rol |
+|------|------|-----|
+| `GET /actuator/health` | público | — |
+| `GET /api/ping` | JWT | cualquier rol autenticado |
+| `GET /api/admin/ping` | JWT | **Admin** (si no → **403**) |
 
 ## Arranque local sin Azure (solo desarrollo)
 
 ```powershell
 .\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=dev"
-curl http://localhost:8080/api/ping
 ```
 
 Con `dev` no se exige JWT. **No usar `dev` en la demo de EP1.**
@@ -70,22 +77,37 @@ curl.exe -i http://localhost:8080/api/ping -H "Authorization: Bearer PEGA_EL_ACC
 ```
 
 Esperado: **200** con `subject` y `roles`.
-
-### 3) Audience incorrecto → 401
-
-Usá un token de otra app (otro `aud`) o forzá `AZURE_AUDIENCES=api://audience-que-no-es` y reutilizá un token bueno: el BFF responde **401**.
-
-### 4) Token expirado → 401
-
-Esperá a que venza el access token (o alterá `exp` en jwt.io sin poder re-firmar: firma inválida → también 401).
-
-### Health (público)
+## Arranque con JWT (EP1-12 / EP1-13)
 
 ```powershell
-curl.exe http://localhost:8080/actuator/health
+.\mvnw.cmd spring-boot:run
 ```
 
-## Qué valida el BFF hoy
+Defaults en `application.yml` (issuer + audience del tenant).
+
+## Laboratorio Postman
+
+### EP1-12 — autenticación
+
+1. Sin Bearer → `/api/ping` → **401**
+2. Token Entra válido → `/api/ping` → **200**
+3. Audience / firma / `exp` mal → **401**
+
+### EP1-13 — autorización
+
+Mismo URL `/api/admin/ping`, dos tokens:
+
+```powershell
+# Token de Admin (claim roles: ["Admin"]) → 200
+curl.exe -i http://localhost:8080/api/admin/ping -H "Authorization: Bearer TOKEN_ADMIN"
+
+# Token de Vecino (claim roles: ["Vecino"]) → 403
+curl.exe -i http://localhost:8080/api/admin/ping -H "Authorization: Bearer TOKEN_VECINO"
+```
+
+El access token debe traer `roles` (App Roles de Entra): `Admin` | `Funcionario` | `Vecino` | `Auditor`.
+
+## Qué valida el BFF
 
 | Check | Cómo |
 |-------|------|
@@ -94,6 +116,9 @@ curl.exe http://localhost:8080/actuator/health
 | Expiración (`exp`) | validador default de Spring |
 | Audience | `AudienceValidator` vs `AZURE_AUDIENCES` / yml |
 | CORS | origen `localhost:4200`, sin `*` (EP1-16) |
+| Issuer / firma / exp / audience | EP1-12 (`JwtValidationConfig`) |
+| Claim `roles` → `ROLE_*` | `EntraRolesJwtConverter` |
+| `/api/admin/**` | `hasRole("Admin")` → 403 JSON si no |
 
 ## Tests
 
