@@ -24,7 +24,7 @@ Con `dev` no se exige JWT. **No usar `dev` en la demo de EP1.**
 
 ## Arranque con validación JWT (EP1-12)
 
-Los valores por defecto de `application.yml` ya apuntan al tenant del equipo. Si necesita cambiarlos:
+Los defaults de `application.yml` ya apuntan al tenant del equipo. Se puede sobreescribir:
 
 ```powershell
 $env:AZURE_ISSUER_URI = "https://login.microsoftonline.com/ce6e98c4-63f0-4b79-83e5-20925b5fada2/v2.0"
@@ -83,6 +83,7 @@ Esperado: **200** con `subject` y `roles`.
 .\mvnw.cmd spring-boot:run
 ```
 
+Usá un token de otra app (otro `aud`) o fuerza `AZURE_AUDIENCES=api://audience-que-no-es` y reutilizá un token bueno: el BFF responde **401**.
 Defaults en `application.yml` (issuer + audience del tenant).
 
 ## Laboratorio Postman
@@ -126,8 +127,13 @@ El access token debe traer `roles` (App Roles de Entra): `Admin` | `Funcionario`
 .\mvnw.cmd test
 ```
 
-## Qué todavía no está (a propósito)
+## Git / secretos (EP1-19)
 
-- Autorización por rol → 403 (EP1-13, otro PR)
+Ignorados: `target/`, `.env`, wallets (`*.pem`, `wallet/`), `application-local.yml`.  
+Usá `.env.example` como plantilla. Tras `.\mvnw.cmd package`, `git status` no debe listar `target/`.
+
+## Qué NO está aún (a propósito)
+
+- Autorización por rol → 403 (EP1-13) — en PR aparte
 - Orquestación a `ms-requests` (EP1-15)
 - Dockerfile (EP1-24)
