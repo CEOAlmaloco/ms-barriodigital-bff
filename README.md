@@ -172,8 +172,32 @@ El access token debe traer `roles` (App Roles de Entra): `Admin` | `Funcionario`
 Ignorados: `target/`, `.env`, wallets (`*.pem`, `wallet/`), `application-local.yml`.  
 Usá `.env.example` como plantilla. Tras `.\mvnw.cmd package`, `git status` no debe listar `target/`.
 
+## Docker (EP1-24)
+
+La imagen no incluye secretos. Entra y la URL de requests van por env.
+
+| Variable | Ejemplo |
+|----------|---------|
+| `AZURE_ISSUER_URI` | `https://login.microsoftonline.com/<tenant>/v2.0` |
+| `AZURE_AUDIENCES` | `api://a0773f3e-abc6-4b53-86fc-9d33a2eddef3` |
+| `REQUESTS_BASE_URL` | `http://host.docker.internal:8081` (local) o `http://requests:8081` (compose) |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:4200` |
+
+```powershell
+docker build -t bd-bff .
+
+docker run --rm -p 8080:8080 `
+  -e AZURE_ISSUER_URI="https://login.microsoftonline.com/ce6e98c4-63f0-4b79-83e5-20925b5fada2/v2.0" `
+  -e AZURE_AUDIENCES="api://a0773f3e-abc6-4b53-86fc-9d33a2eddef3" `
+  -e REQUESTS_BASE_URL="http://host.docker.internal:8081" `
+  -e CORS_ALLOWED_ORIGINS="http://localhost:4200" `
+  bd-bff
+```
+
+Health: `http://localhost:8080/actuator/health`  
+`/api/ping` sin Bearer → **401** (esperado). Compose con requests: `barriodigital-infra/apps/`.
+
 ## Qué NO está aún (a propósito)
 
-- Autorización por rol → 403 (EP1-13) — en PR aparte
-- Orquestación a `ms-requests` (EP1-15)
-- Dockerfile (EP1-24)
+- API Gateway delante del BFF (EP2)
+- Cambio de estado / Rabbit (EP2–EP3)
