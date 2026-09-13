@@ -50,6 +50,10 @@ curl.exe -i -X POST http://localhost:8080/api/requests `
 
 Si requests responde 400 o 404, el BFF **conserva** ese status (no lo tapa con 500).
 
+Body de alta (sin `title`): `description`, `procedureType`, `address`.  
+El BFF manda `X-User-Id` (oid/sub del JWT) y `X-User-Roles` a requests.  
+Filtros `from`/`to`: fecha `yyyy-MM-dd`.
+
 ## Arranque local sin Azure (solo desarrollo)
 
 ```powershell
