@@ -13,6 +13,42 @@ Contrato: `barriodigital-infra` → `docs/decisiones.md`.
 | `GET /actuator/health` | público | — |
 | `GET /api/ping` | JWT | cualquier rol autenticado |
 | `GET /api/admin/ping` | JWT | **Admin** (si no → **403**) |
+| `POST /api/requests` | JWT | cualquier rol autenticado → proxy a requests |
+| `GET /api/requests` | JWT | listado (filtros `status`, `from`, `to`) |
+| `GET /api/requests/{id}` | JWT | detalle |
+
+## Proxy a requests (EP1-15)
+
+El BFF valida el JWT y reenvía alta/listado/detalle a `ms-barriodigital-requests`.
+
+Variable: `REQUESTS_BASE_URL` (default `http://localhost:8081`). Ver `.env.example`.
+
+1. Levanta requests en el puerto **8081** (con Oracle).
+2. Levanta el BFF en **8080**.
+3. Prueba local sin Azure (perfil `dev`):
+
+```powershell
+.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=dev"
+```
+
+```powershell
+curl.exe -i -X POST http://localhost:8080/api/requests `
+  -H "Content-Type: application/json" `
+  -d "{\"title\":\"Bache\",\"description\":\"Hueco\",\"procedureType\":\"bache\"}"
+
+curl.exe -i "http://localhost:8080/api/requests?status=INGRESADO"
+```
+
+Con JWT real (sin perfil `dev`):
+
+```powershell
+curl.exe -i -X POST http://localhost:8080/api/requests `
+  -H "Authorization: Bearer PEGA_EL_ACCESS_TOKEN" `
+  -H "Content-Type: application/json" `
+  -d "{\"title\":\"Bache\",\"description\":\"Hueco\",\"procedureType\":\"bache\"}"
+```
+
+Si requests responde 400 o 404, el BFF **conserva** ese status (no lo tapa con 500).
 
 ## Arranque local sin Azure (solo desarrollo)
 
