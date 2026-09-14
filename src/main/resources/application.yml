@@ -1,0 +1,41 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: ms-barriodigital-bff
+  config:
+    import: optional:file:.env[.properties]
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Contrato EP1-03 (docs/decisiones.md en barriodigital-infra)
+          issuer-uri: ${AZURE_ISSUER_URI:https://login.microsoftonline.com/ce6e98c4-63f0-4b79-83e5-20925b5fada2/v2.0}
+          # Entra puede emitir aud = App ID URI (api://...) o solo el GUID del client id. Aceptamos ambos.
+          audiences: ${AZURE_AUDIENCES:api://a0773f3e-abc6-4b53-86fc-9d33a2eddef3,a0773f3e-abc6-4b53-86fc-9d33a2eddef3}
+
+# EP1-16: origen del Angular local. Separar varios con coma si hace falta.
+# EP1-15: URL base de ms-barriodigital-requests (sin barra final).
+barriodigital:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+  requests:
+    base-url: ${REQUESTS_BASE_URL:http://localhost:8081}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+---
+# Arranque local sin Azure:
+# .\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=dev
+spring:
+  config:
+    activate:
+      on-profile: dev
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration
