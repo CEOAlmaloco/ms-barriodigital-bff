@@ -1,6 +1,7 @@
 package cl.duoc.barriodigital.bff.web;
 
 import cl.duoc.barriodigital.bff.service.RequestsProxyService;
+import cl.duoc.barriodigital.bff.web.dto.ChangeStatusDto;
 import cl.duoc.barriodigital.bff.web.dto.CreateRequestDto;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -10,6 +11,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -62,6 +64,22 @@ public class RequestsController {
             @AuthenticationPrincipal Jwt jwt
     ) {
         return requestsProxyService.list(status, from, to, resolveUserId(jwt), resolveRoles(jwt));
+    }
+
+    /**
+     * EP1.5-06. 403 de no-Funcionario lo corta AzureSecurityConfig (no llega acá).
+     * 200/400/404/409 salen de requests.
+     */
+    @PutMapping("/{id}/status")
+    public ResponseEntity<Map<String, Object>> updateStatus(
+            @PathVariable String id,
+            @Valid @RequestBody ChangeStatusDto body,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("status", body.status());
+        payload.put("rejectionReason", body.rejectionReason());
+        return requestsProxyService.updateStatus(id, payload, resolveUserId(jwt), resolveRoles(jwt));
     }
 
     /**
