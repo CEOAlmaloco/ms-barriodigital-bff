@@ -17,10 +17,10 @@ import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -69,5 +69,29 @@ class RequestsControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void putStatusPropaga200() throws Exception {
+        when(requestsProxyService.updateStatus(eq("id-1"), anyMap(), eq("dev-user"), eq("Vecino")))
+                .thenReturn(ResponseEntity.ok(Map.of("id", "id-1", "status", "ADMITIDO")));
+
+        mockMvc.perform(put("/api/requests/id-1/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"ADMITIDO\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ADMITIDO"));
+    }
+
+    @Test
+    void putStatusPropaga409() throws Exception {
+        when(requestsProxyService.updateStatus(eq("id-1"), anyMap(), eq("dev-user"), eq("Vecino")))
+                .thenReturn(ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(Map.of("status", 409, "message", "No se puede pasar de INGRESADO a EN_TERRENO")));
+
+        mockMvc.perform(put("/api/requests/id-1/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"EN_TERRENO\"}"))
+                .andExpect(status().isConflict());
     }
 }

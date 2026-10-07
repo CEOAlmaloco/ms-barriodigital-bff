@@ -16,6 +16,7 @@ Contrato: `barriodigital-infra` → `docs/decisiones.md`.
 | `POST /api/requests` | JWT | cualquier rol autenticado → proxy a requests |
 | `GET /api/requests` | JWT | listado (filtros `status`, `from`, `to`) |
 | `GET /api/requests/{id}` | JWT | detalle |
+| `PUT /api/requests/{id}/status` | JWT | **Funcionario** (si no → **403**). Proxy a requests. |
 
 ## Proxy a requests (EP1-15)
 
@@ -53,6 +54,16 @@ Si requests responde 400 o 404, el BFF **conserva** ese status (no lo tapa con 5
 Body de alta (sin `title`): `description`, `procedureType`, `address`.  
 El BFF manda `X-User-Id` (oid/sub del JWT) y `X-User-Roles` a requests.  
 Filtros `from`/`to`: fecha `yyyy-MM-dd`.
+
+Cambio de estado (EP1.5-06). Vecino/Admin/Auditor → **403** en el BFF (no llega a requests).  
+200 / 400 / 404 / 409 se **copian** del micro de requests (no se tapan con 500). Cupo al admitir = EP1.5-18.
+
+```powershell
+curl.exe -i -X PUT http://localhost:8080/api/requests/ID/status `
+  -H "Authorization: Bearer TOKEN_FUNCIONARIO" `
+  -H "Content-Type: application/json" `
+  -d "{\"status\":\"ADMITIDO\"}"
+```
 
 ## Arranque local sin Azure (solo desarrollo)
 
@@ -200,5 +211,6 @@ Health: `http://localhost:8080/actuator/health`
 
 ## Qué NO está aún (a propósito)
 
-- API Gateway delante del BFF (EP2)
-- Cambio de estado / Rabbit (EP2–EP3)
+- GET `/api/requests/meta/transitions` (EP1.5-07)
+- Orquestación de cupo al admitir (EP1.5-18)
+- Rabbit / notify / Kafka (EP3)

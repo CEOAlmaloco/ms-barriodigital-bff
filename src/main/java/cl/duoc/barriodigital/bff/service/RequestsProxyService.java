@@ -84,6 +84,25 @@ public class RequestsProxyService {
                         .body(response.bodyTo(LIST_TYPE)));
     }
 
+    /** EP1.5-06: propaga 200/400/404/409; no tapa errores de requests con 500. */
+    public ResponseEntity<Map<String, Object>> updateStatus(
+            String id,
+            Map<String, Object> body,
+            String userId,
+            String roles
+    ) {
+        return requestsRestClient.put()
+                .uri("/api/requests/{id}/status", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HEADER_USER_ID, userId)
+                .header(HEADER_USER_ROLES, nullToEmpty(roles))
+                .body(body)
+                .exchange((request, response) -> ResponseEntity
+                        .status(response.getStatusCode())
+                        .contentType(resolveContentType(response.getHeaders().getContentType()))
+                        .body(response.bodyTo(MAP_TYPE)));
+    }
+
     private static MediaType resolveContentType(MediaType contentType) {
         return contentType != null ? contentType : MediaType.APPLICATION_JSON;
     }
