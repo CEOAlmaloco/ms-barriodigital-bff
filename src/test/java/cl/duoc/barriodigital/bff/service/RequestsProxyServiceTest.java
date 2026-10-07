@@ -79,4 +79,62 @@ class RequestsProxyServiceTest {
         assertEquals(1, response.getBody().size());
         server.verify();
     }
+
+    @Test
+    void updateStatusReenviaHeadersY200() {
+        server.expect(requestTo("http://requests-test/api/requests/id-1/status"))
+                .andExpect(method(HttpMethod.PUT))
+                .andExpect(header("X-User-Id", "func-1"))
+                .andExpect(header("X-User-Roles", "Funcionario"))
+                .andRespond(withSuccess("{\"id\":\"id-1\",\"status\":\"ADMITIDO\"}", MediaType.APPLICATION_JSON));
+
+        ResponseEntity<Map<String, Object>> response = service.updateStatus(
+                "id-1",
+                Map.of("status", "ADMITIDO"),
+                "func-1",
+                "Funcionario"
+        );
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("ADMITIDO", response.getBody().get("status"));
+        server.verify();
+    }
+
+    @Test
+    void updateStatusPropaga409() {
+        server.expect(requestTo("http://requests-test/api/requests/id-1/status"))
+                .andExpect(method(HttpMethod.PUT))
+                .andRespond(withStatus(HttpStatus.CONFLICT)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"status\":409,\"message\":\"No se puede pasar de INGRESADO a EN_TERRENO\"}"));
+
+        ResponseEntity<Map<String, Object>> response = service.updateStatus(
+                "id-1",
+                Map.of("status", "EN_TERRENO"),
+                "func-1",
+                "Funcionario"
+        );
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        server.verify();
+    }
+
+    @Test
+    void updateStatusPropaga404() {
+        server.expect(requestTo("http://requests-test/api/requests/no-existe/status"))
+                .andExpect(method(HttpMethod.PUT))
+                .andRespond(withStatus(HttpStatus.NOT_FOUND)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"status\":404}"));
+
+        ResponseEntity<Map<String, Object>> response = service.updateStatus(
+                "no-existe",
+                Map.of("status", "ADMITIDO"),
+                "func-1",
+                "Funcionario"
+        );
+
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        server.verify();
+    }
 }
