@@ -17,6 +17,9 @@ Contrato: `barriodigital-infra` → `docs/decisiones.md`.
 | `GET /api/requests` | JWT | listado (filtros `status`, `from`, `to`) |
 | `GET /api/requests/meta/transitions` | JWT | proxy del mapa de transiciones |
 | `GET /api/requests/{id}` | JWT | detalle |
+| `GET /api/catalog/procedures` | JWT | cualquier rol autenticado → proxy a catalog |
+| `POST /api/catalog/procedures` | JWT | **Admin** (si no → **403**) |
+| `PUT /api/catalog/procedures/{value}` | JWT | **Admin** (si no → **403**) |
 
 ## Proxy a requests (EP1-15)
 
@@ -50,6 +53,14 @@ curl.exe -i -X POST http://localhost:8080/api/requests `
 ```
 
 Si requests responde 400 o 404, el BFF **conserva** ese status (no lo tapa con 500).
+
+## Proxy a catalog (EP1.5-13)
+
+El BFF vuelve a validar el JWT, igual que en requests. `GET /api/catalog/procedures` lo puede llamar cualquier rol autenticado. `POST` y `PUT` exigen Admin: otro rol responde **403** y no llega a catalog.
+
+Variable: `CATALOG_BASE_URL` (default `http://localhost:8082`).
+
+El BFF arma el header `X-User-Roles` desde el claim `roles` del token y se lo manda a catalog. Catalog no lee el JWT.
 
 ## Arranque local sin Azure (solo desarrollo)
 
