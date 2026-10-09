@@ -17,6 +17,7 @@ import org.springframework.security.web.access.AccessDeniedHandler;
  * EP1-13: autenticado sin rol Admin → 403 en {@code /api/admin/**}.
  * CORS: ver {@link CorsConfig} (EP1-16).
  * EP1-15: {@code /api/requests/**} exige JWT (cualquier rol autenticado).
+ * EP1.5-13: GET de catálogo, cualquier rol autenticado; POST y PUT solo Admin.
  */
 @Configuration
 @Profile("!dev")
@@ -31,6 +32,8 @@ public class AzureSecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/catalog/procedures").hasRole("Admin")
+                        .requestMatchers(HttpMethod.PUT, "/api/catalog/procedures/*").hasRole("Admin")
                         .requestMatchers("/api/admin/**").hasRole("Admin")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2

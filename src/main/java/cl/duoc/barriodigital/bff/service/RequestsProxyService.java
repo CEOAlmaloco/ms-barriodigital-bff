@@ -1,5 +1,6 @@
 package cl.duoc.barriodigital.bff.service;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -28,7 +29,7 @@ public class RequestsProxyService {
 
     private final RestClient requestsRestClient;
 
-    public RequestsProxyService(RestClient requestsRestClient) {
+    public RequestsProxyService(@Qualifier("requestsRestClient") RestClient requestsRestClient) {
         this.requestsRestClient = requestsRestClient;
     }
 
