@@ -15,6 +15,7 @@ Contrato: `barriodigital-infra` → `docs/decisiones.md`.
 | `GET /api/admin/ping` | JWT | **Admin** (si no → **403**) |
 | `POST /api/requests` | JWT | cualquier rol autenticado → proxy a requests |
 | `GET /api/requests` | JWT | listado (filtros `status`, `from`, `to`) |
+| `GET /api/requests/meta/transitions` | JWT | proxy del mapa de transiciones |
 | `GET /api/requests/{id}` | JWT | detalle |
 
 ## Proxy a requests (EP1-15)

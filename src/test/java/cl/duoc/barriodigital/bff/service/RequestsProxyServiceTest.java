@@ -52,6 +52,21 @@ class RequestsProxyServiceTest {
     }
 
     @Test
+    void transitionsReenviaElMapa() {
+        server.expect(requestTo("http://requests-test/api/requests/meta/transitions"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(
+                        "{\"INGRESADO\":[\"ADMITIDO\",\"RECHAZADO\"]}",
+                        MediaType.APPLICATION_JSON));
+
+        ResponseEntity<Map<String, List<String>>> response = service.transitions();
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(List.of("ADMITIDO", "RECHAZADO"), response.getBody().get("INGRESADO"));
+        server.verify();
+    }
+
+    @Test
     void getByIdReenvia404SinConvertirloEn500() {
         server.expect(requestTo("http://requests-test/api/requests/no-existe"))
                 .andExpect(method(HttpMethod.GET))
