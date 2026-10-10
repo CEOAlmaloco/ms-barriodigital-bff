@@ -17,6 +17,7 @@ Contrato: `barriodigital-infra` → `docs/decisiones.md`.
 | `GET /api/requests` | JWT | listado (filtros `status`, `from`, `to`) |
 | `GET /api/requests/meta/transitions` | JWT | proxy del mapa de transiciones |
 | `GET /api/requests/{id}` | JWT | detalle |
+| `PUT /api/requests/{id}/status` | JWT | **Funcionario** (si no → **403**). Proxy a requests. |
 
 ## Proxy a requests (EP1-15)
 
@@ -51,6 +52,20 @@ curl.exe -i -X POST http://localhost:8080/api/requests `
 
 Si requests responde 400 o 404, el BFF **conserva** ese status (no lo tapa con 500).
 
+Body de alta (sin `title`): `description`, `procedureType`, `address`.  
+El BFF manda `X-User-Id` (oid/sub del JWT) y `X-User-Roles` a requests.  
+Filtros `from`/`to`: fecha `yyyy-MM-dd`.
+
+Cambio de estado (EP1.5-06). Vecino/Admin/Auditor → **403** en el BFF (no llega a requests).  
+200 / 400 / 404 / 409 se **copian** del micro de requests (no se tapan con 500). Cupo al admitir = EP1.5-18.
+
+```powershell
+curl.exe -i -X PUT http://localhost:8080/api/requests/ID/status `
+  -H "Authorization: Bearer TOKEN_FUNCIONARIO" `
+  -H "Content-Type: application/json" `
+  -d "{\"status\":\"ADMITIDO\"}"
+```
+
 ## Arranque local sin Azure (solo desarrollo)
 
 ```powershell
@@ -65,7 +80,7 @@ Los defaults de `application.yml` ya apuntan al tenant del equipo. Se puede sobr
 
 ```powershell
 $env:AZURE_ISSUER_URI = "https://login.microsoftonline.com/ce6e98c4-63f0-4b79-83e5-20925b5fada2/v2.0"
-$env:AZURE_AUDIENCES  = "api://a0773f3e-abc6-4b53-86fc-9d33a2eddef3"
+$env:AZURE_AUDIENCES  = "api://a0773f3e-abc6-4b53-86fc-9d33a2eddef3,a0773f3e-abc6-4b53-86fc-9d33a2eddef3"
 
 .\mvnw.cmd spring-boot:run
 ```
@@ -105,7 +120,8 @@ curl.exe -i http://localhost:8080/api/ping
 1. Entrá con un usuario de prueba (MSAL / https://jwt.ms).
 2. El access token debe tener:
    - `iss` = `https://login.microsoftonline.com/ce6e98c4-63f0-4b79-83e5-20925b5fada2/v2.0`
-   - `aud` = `api://a0773f3e-abc6-4b53-86fc-9d33a2eddef3`
+   - `aud` = `api://a0773f3e-abc6-4b53-86fc-9d33a2eddef3` **o** solo el GUID `a0773f3e-abc6-4b53-86fc-9d33a2eddef3`  
+     (Entra suele emitir el GUID; ambos son válidos. El BFF acepta los dos vía `AZURE_AUDIENCES`.)
    - `roles` (App Roles): Admin | Funcionario | Vecino | Auditor
 3. Llamá:
 
@@ -169,8 +185,33 @@ El access token debe traer `roles` (App Roles de Entra): `Admin` | `Funcionario`
 Ignorados: `target/`, `.env`, wallets (`*.pem`, `wallet/`), `application-local.yml`.  
 Usá `.env.example` como plantilla. Tras `.\mvnw.cmd package`, `git status` no debe listar `target/`.
 
+## Docker (EP1-24)
+
+La imagen no incluye secretos. Entra y la URL de requests van por env.
+
+| Variable | Ejemplo |
+|----------|---------|
+| `AZURE_ISSUER_URI` | `https://login.microsoftonline.com/<tenant>/v2.0` |
+| `AZURE_AUDIENCES` | `api://a0773f3e-...` y/ o el GUID `a0773f3e-...` (coma-separados) |
+| `REQUESTS_BASE_URL` | `http://host.docker.internal:8081` (local) o `http://requests:8081` (compose) |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:4200` |
+
+```powershell
+docker build -t bd-bff .
+
+docker run --rm -p 8080:8080 `
+  -e AZURE_ISSUER_URI="https://login.microsoftonline.com/ce6e98c4-63f0-4b79-83e5-20925b5fada2/v2.0" `
+  -e AZURE_AUDIENCES="api://a0773f3e-abc6-4b53-86fc-9d33a2eddef3,a0773f3e-abc6-4b53-86fc-9d33a2eddef3" `
+  -e REQUESTS_BASE_URL="http://host.docker.internal:8081" `
+  -e CORS_ALLOWED_ORIGINS="http://localhost:4200" `
+  bd-bff
+```
+
+Health: `http://localhost:8080/actuator/health`  
+`/api/ping` sin Bearer → **401** (esperado). Compose con requests: `barriodigital-infra/apps/`.
+
 ## Qué NO está aún (a propósito)
 
-- Autorización por rol → 403 (EP1-13) — en PR aparte
-- Orquestación a `ms-requests` (EP1-15)
-- Dockerfile (EP1-24)
+- GET `/api/requests/meta/transitions` (EP1.5-07)
+- Orquestación de cupo al admitir (EP1.5-18)
+- Rabbit / notify / Kafka (EP3)
