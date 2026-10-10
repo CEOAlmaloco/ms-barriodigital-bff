@@ -51,9 +51,27 @@ class RequestsControllerTest {
     }
 
     @Test
+    void getTransicionesDelegaEnElProxy() throws Exception {
+        when(requestsProxyService.transitions()).thenReturn(ResponseEntity.ok(Map.of(
+                "INGRESADO", List.of("ADMITIDO", "RECHAZADO"),
+                "RESUELTO", List.of()
+        )));
+
+        mockMvc.perform(get("/api/requests/meta/transitions"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.INGRESADO[0]").value("ADMITIDO"))
+                .andExpect(jsonPath("$.INGRESADO[1]").value("RECHAZADO"));
+    }
+
+    @Test
     void getListaConFecha() throws Exception {
-        when(requestsProxyService.list(eq("INGRESADO"), eq("2026-09-01"), eq("2026-09-13"), eq("dev-user"), eq("Vecino")))
-                .thenReturn(ResponseEntity.ok(List.of(Map.of("id", "1"))));
+        when(requestsProxyService.list(
+                eq("INGRESADO"),
+                eq("2026-09-01"),
+                eq("2026-09-13"),
+                eq("dev-user"),
+                eq("Vecino")
+        )).thenReturn(ResponseEntity.ok(List.of(Map.of("id", "1"))));
 
         mockMvc.perform(get("/api/requests")
                         .param("status", "INGRESADO")

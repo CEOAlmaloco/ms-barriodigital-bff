@@ -25,6 +25,8 @@ public class RequestsProxyService {
             new ParameterizedTypeReference<>() {};
     private static final ParameterizedTypeReference<List<Map<String, Object>>> LIST_TYPE =
             new ParameterizedTypeReference<>() {};
+    private static final ParameterizedTypeReference<Map<String, List<String>>> TRANSITIONS_TYPE =
+            new ParameterizedTypeReference<>() {};
 
     private final RestClient requestsRestClient;
 
@@ -47,6 +49,15 @@ public class RequestsProxyService {
                         .status(response.getStatusCode())
                         .contentType(resolveContentType(response.getHeaders().getContentType()))
                         .body(response.bodyTo(MAP_TYPE)));
+    }
+
+    public ResponseEntity<Map<String, List<String>>> transitions() {
+        return requestsRestClient.get()
+                .uri("/api/requests/meta/transitions")
+                .exchange((request, response) -> ResponseEntity
+                        .status(response.getStatusCode())
+                        .contentType(resolveContentType(response.getHeaders().getContentType()))
+                        .body(response.bodyTo(TRANSITIONS_TYPE)));
     }
 
     public ResponseEntity<Map<String, Object>> getById(String id, String userId, String roles) {

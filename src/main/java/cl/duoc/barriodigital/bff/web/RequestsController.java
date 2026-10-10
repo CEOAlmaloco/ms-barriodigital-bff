@@ -48,6 +48,11 @@ public class RequestsController {
         return requestsProxyService.create(payload, resolveUserId(jwt), resolveRoles(jwt));
     }
 
+    @GetMapping("/meta/transitions")
+    public ResponseEntity<Map<String, List<String>>> transitions() {
+        return requestsProxyService.transitions();
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getById(
             @PathVariable String id,
