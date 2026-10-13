@@ -6,7 +6,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClient.RequestHeadersSpec;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.List;
@@ -14,11 +13,14 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Proxy hacia ms-barriodigital-requests (EP1-15).
- * Reenvía status y body: 400/404 del dominio no se convierten en 500.
+ * Proxy hacia ms-barriodigital-requests.
+ * Reenvía X-User-Id / X-User-Roles tomados del JWT (nunca del body del cliente).
  */
 @Service
 public class RequestsProxyService {
+
+    public static final String HEADER_USER_ID = "X-User-Id";
+    public static final String HEADER_USER_ROLES = "X-User-Roles";
 
     private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE =
             new ParameterizedTypeReference<>() {};
@@ -33,11 +35,21 @@ public class RequestsProxyService {
         this.requestsRestClient = requestsRestClient;
     }
 
-    public ResponseEntity<Map<String, Object>> create(Map<String, Object> body) {
-        return exchangeMap(requestsRestClient.post()
+    public ResponseEntity<Map<String, Object>> create(
+            Map<String, Object> body,
+            String userId,
+            String roles
+    ) {
+        return requestsRestClient.post()
                 .uri("/api/requests")
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(body));
+                .header(HEADER_USER_ID, userId)
+                .header(HEADER_USER_ROLES, nullToEmpty(roles))
+                .body(body)
+                .exchange((request, response) -> ResponseEntity
+                        .status(response.getStatusCode())
+                        .contentType(resolveContentType(response.getHeaders().getContentType()))
+                        .body(response.bodyTo(MAP_TYPE)));
     }
 
     public ResponseEntity<Map<String, List<String>>> transitions() {
@@ -49,11 +61,24 @@ public class RequestsProxyService {
                         .body(response.bodyTo(TRANSITIONS_TYPE)));
     }
 
-    public ResponseEntity<Map<String, Object>> getById(String id) {
-        return exchangeMap(requestsRestClient.get().uri("/api/requests/{id}", id));
+    public ResponseEntity<Map<String, Object>> getById(String id, String userId, String roles) {
+        return requestsRestClient.get()
+                .uri("/api/requests/{id}", id)
+                .header(HEADER_USER_ID, userId)
+                .header(HEADER_USER_ROLES, nullToEmpty(roles))
+                .exchange((request, response) -> ResponseEntity
+                        .status(response.getStatusCode())
+                        .contentType(resolveContentType(response.getHeaders().getContentType()))
+                        .body(response.bodyTo(MAP_TYPE)));
     }
 
-    public ResponseEntity<List<Map<String, Object>>> list(String status, String from, String to) {
+    public ResponseEntity<List<Map<String, Object>>> list(
+            String status,
+            String from,
+            String to,
+            String userId,
+            String roles
+    ) {
         String uri = UriComponentsBuilder.fromPath("/api/requests")
                 .queryParamIfPresent("status", Optional.ofNullable(blankToNull(status)))
                 .queryParamIfPresent("from", Optional.ofNullable(blankToNull(from)))
@@ -61,21 +86,33 @@ public class RequestsProxyService {
                 .build(true)
                 .toUriString();
 
-        return exchangeList(requestsRestClient.get().uri(uri));
+        return requestsRestClient.get()
+                .uri(uri)
+                .header(HEADER_USER_ID, userId)
+                .header(HEADER_USER_ROLES, nullToEmpty(roles))
+                .exchange((request, response) -> ResponseEntity
+                        .status(response.getStatusCode())
+                        .contentType(resolveContentType(response.getHeaders().getContentType()))
+                        .body(response.bodyTo(LIST_TYPE)));
     }
 
-    private ResponseEntity<Map<String, Object>> exchangeMap(RequestHeadersSpec<?> spec) {
-        return spec.exchange((request, response) -> ResponseEntity
-                .status(response.getStatusCode())
-                .contentType(resolveContentType(response.getHeaders().getContentType()))
-                .body(response.bodyTo(MAP_TYPE)));
-    }
-
-    private ResponseEntity<List<Map<String, Object>>> exchangeList(RequestHeadersSpec<?> spec) {
-        return spec.exchange((request, response) -> ResponseEntity
-                .status(response.getStatusCode())
-                .contentType(resolveContentType(response.getHeaders().getContentType()))
-                .body(response.bodyTo(LIST_TYPE)));
+    /** EP1.5-06: propaga 200/400/404/409; no tapa errores de requests con 500. */
+    public ResponseEntity<Map<String, Object>> updateStatus(
+            String id,
+            Map<String, Object> body,
+            String userId,
+            String roles
+    ) {
+        return requestsRestClient.put()
+                .uri("/api/requests/{id}/status", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HEADER_USER_ID, userId)
+                .header(HEADER_USER_ROLES, nullToEmpty(roles))
+                .body(body)
+                .exchange((request, response) -> ResponseEntity
+                        .status(response.getStatusCode())
+                        .contentType(resolveContentType(response.getHeaders().getContentType()))
+                        .body(response.bodyTo(MAP_TYPE)));
     }
 
     private static MediaType resolveContentType(MediaType contentType) {
@@ -87,5 +124,9 @@ public class RequestsProxyService {
             return null;
         }
         return value;
+    }
+
+    private static String nullToEmpty(String value) {
+        return value == null ? "" : value;
     }
 }

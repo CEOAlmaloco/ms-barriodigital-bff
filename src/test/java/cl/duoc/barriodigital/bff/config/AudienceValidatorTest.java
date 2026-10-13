@@ -13,13 +13,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class AudienceValidatorTest {
 
+    private static final String AUD_URI = "api://a0773f3e-abc6-4b53-86fc-9d33a2eddef3";
+    private static final String AUD_GUID = "a0773f3e-abc6-4b53-86fc-9d33a2eddef3";
+
     private final JwtValidationConfig.AudienceValidator validator =
-            new JwtValidationConfig.AudienceValidator(
-                    Set.of("api://a0773f3e-abc6-4b53-86fc-9d33a2eddef3"));
+            new JwtValidationConfig.AudienceValidator(Set.of(AUD_URI, AUD_GUID));
 
     @Test
-    void aceptaAudienceDelContrato() {
-        Jwt jwt = jwtWithAud("api://a0773f3e-abc6-4b53-86fc-9d33a2eddef3");
+    void aceptaAudienceAppIdUri() {
+        Jwt jwt = jwtWithAud(AUD_URI);
+        OAuth2TokenValidatorResult result = validator.validate(jwt);
+        assertThat(result.hasErrors()).isFalse();
+    }
+
+    @Test
+    void aceptaAudienceGuidComoEmiteEntra() {
+        Jwt jwt = jwtWithAud(AUD_GUID);
         OAuth2TokenValidatorResult result = validator.validate(jwt);
         assertThat(result.hasErrors()).isFalse();
     }
@@ -35,7 +44,7 @@ class AudienceValidatorTest {
     void aceptaAudienceEnLista() {
         Jwt jwt = Jwt.withTokenValue("token")
                 .header("alg", "none")
-                .audience(List.of("api://a0773f3e-abc6-4b53-86fc-9d33a2eddef3", "otro"))
+                .audience(List.of(AUD_URI, "otro"))
                 .issuedAt(Instant.now())
                 .expiresAt(Instant.now().plusSeconds(3600))
                 .claim("sub", "test")

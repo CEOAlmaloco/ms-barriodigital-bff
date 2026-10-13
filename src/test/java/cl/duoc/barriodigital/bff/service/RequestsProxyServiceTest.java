@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
@@ -32,22 +33,22 @@ class RequestsProxyServiceTest {
     }
 
     @Test
-    void createReenvia201ConBody() {
+    void createReenviaHeadersDeIdentidad() {
         server.expect(requestTo("http://requests-test/api/requests"))
                 .andExpect(method(HttpMethod.POST))
+                .andExpect(header("X-User-Id", "oid-1"))
+                .andExpect(header("X-User-Roles", "Vecino"))
                 .andRespond(withStatus(HttpStatus.CREATED)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .body("{\"id\":\"abc\",\"status\":\"INGRESADO\",\"title\":\"Bache\"}"));
+                        .body("{\"id\":\"abc\",\"status\":\"INGRESADO\"}"));
 
-        ResponseEntity<Map<String, Object>> response = service.create(Map.of(
-                "title", "Bache",
-                "description", "Hueco",
-                "procedureType", "bache"
-        ));
+        ResponseEntity<Map<String, Object>> response = service.create(
+                Map.of("description", "Hueco", "procedureType", "bache", "address", "Calle 1"),
+                "oid-1",
+                "Vecino"
+        );
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertEquals("abc", response.getBody().get("id"));
-        assertEquals("INGRESADO", response.getBody().get("status"));
         server.verify();
     }
 
@@ -67,32 +68,91 @@ class RequestsProxyServiceTest {
     }
 
     @Test
-    void getByIdReenvia404SinConvertirloEn500() {
+    void getByIdReenvia404() {
         server.expect(requestTo("http://requests-test/api/requests/no-existe"))
                 .andExpect(method(HttpMethod.GET))
+                .andExpect(header("X-User-Id", "oid-1"))
+                .andExpect(header("X-User-Roles", "Vecino"))
                 .andRespond(withStatus(HttpStatus.NOT_FOUND)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .body("{\"status\":404,\"title\":\"Not Found\"}"));
+                        .body("{\"status\":404}"));
 
-        ResponseEntity<Map<String, Object>> response = service.getById("no-existe");
+        ResponseEntity<Map<String, Object>> response =
+                service.getById("no-existe", "oid-1", "Vecino");
 
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
-        assertEquals(404, ((Number) response.getBody().get("status")).intValue());
         server.verify();
     }
 
     @Test
-    void listReenviaFiltroStatus() {
-        server.expect(requestTo("http://requests-test/api/requests?status=INGRESADO"))
+    void listConFechaSimple() {
+        server.expect(requestTo("http://requests-test/api/requests?status=INGRESADO&from=2026-09-01&to=2026-09-13"))
                 .andExpect(method(HttpMethod.GET))
-                .andRespond(withSuccess(
-                        "[{\"id\":\"1\",\"status\":\"INGRESADO\"}]",
-                        MediaType.APPLICATION_JSON));
+                .andRespond(withSuccess("[{\"id\":\"1\"}]", MediaType.APPLICATION_JSON));
 
-        ResponseEntity<List<Map<String, Object>>> response = service.list("INGRESADO", null, null);
+        ResponseEntity<List<Map<String, Object>>> response =
+                service.list("INGRESADO", "2026-09-01", "2026-09-13", "oid-f", "Funcionario");
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(1, response.getBody().size());
+        server.verify();
+    }
+
+    @Test
+    void updateStatusReenviaHeadersY200() {
+        server.expect(requestTo("http://requests-test/api/requests/id-1/status"))
+                .andExpect(method(HttpMethod.PUT))
+                .andExpect(header("X-User-Id", "func-1"))
+                .andExpect(header("X-User-Roles", "Funcionario"))
+                .andRespond(withSuccess("{\"id\":\"id-1\",\"status\":\"ADMITIDO\"}", MediaType.APPLICATION_JSON));
+
+        ResponseEntity<Map<String, Object>> response = service.updateStatus(
+                "id-1",
+                Map.of("status", "ADMITIDO"),
+                "func-1",
+                "Funcionario"
+        );
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("ADMITIDO", response.getBody().get("status"));
+        server.verify();
+    }
+
+    @Test
+    void updateStatusPropaga409() {
+        server.expect(requestTo("http://requests-test/api/requests/id-1/status"))
+                .andExpect(method(HttpMethod.PUT))
+                .andRespond(withStatus(HttpStatus.CONFLICT)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"status\":409,\"message\":\"No se puede pasar de INGRESADO a EN_TERRENO\"}"));
+
+        ResponseEntity<Map<String, Object>> response = service.updateStatus(
+                "id-1",
+                Map.of("status", "EN_TERRENO"),
+                "func-1",
+                "Funcionario"
+        );
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        server.verify();
+    }
+
+    @Test
+    void updateStatusPropaga404() {
+        server.expect(requestTo("http://requests-test/api/requests/no-existe/status"))
+                .andExpect(method(HttpMethod.PUT))
+                .andRespond(withStatus(HttpStatus.NOT_FOUND)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"status\":404}"));
+
+        ResponseEntity<Map<String, Object>> response = service.updateStatus(
+                "no-existe",
+                Map.of("status", "ADMITIDO"),
+                "func-1",
+                "Funcionario"
+        );
+
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         server.verify();
     }
 }

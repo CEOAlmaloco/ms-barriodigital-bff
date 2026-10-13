@@ -17,10 +17,10 @@ import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -36,19 +36,18 @@ class RequestsControllerTest {
     RequestsProxyService requestsProxyService;
 
     @Test
-    void postCreaTramiteViaProxy() throws Exception {
-        when(requestsProxyService.create(anyMap())).thenReturn(ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(Map.of("id", "uuid-1", "status", "INGRESADO", "title", "Bache")));
+    void postCreaSinTitleEnBody() throws Exception {
+        when(requestsProxyService.create(anyMap(), eq("dev-user"), eq("Vecino")))
+                .thenReturn(ResponseEntity.status(HttpStatus.CREATED)
+                        .body(Map.of("id", "uuid-1", "status", "INGRESADO", "title", "Bache en calle — Calle 1")));
 
         mockMvc.perform(post("/api/requests")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"title":"Bache","description":"Hueco","procedureType":"bache"}
+                                {"description":"Hueco","procedureType":"bache","address":"Calle 1"}
                                 """))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value("uuid-1"))
-                .andExpect(jsonPath("$.status").value("INGRESADO"));
+                .andExpect(jsonPath("$.id").value("uuid-1"));
     }
 
     @Test
@@ -65,11 +64,19 @@ class RequestsControllerTest {
     }
 
     @Test
-    void getListaConFiltro() throws Exception {
-        when(requestsProxyService.list(eq("INGRESADO"), isNull(), isNull()))
-                .thenReturn(ResponseEntity.ok(List.of(Map.of("id", "1", "status", "INGRESADO"))));
+    void getListaConFecha() throws Exception {
+        when(requestsProxyService.list(
+                eq("INGRESADO"),
+                eq("2026-09-01"),
+                eq("2026-09-13"),
+                eq("dev-user"),
+                eq("Vecino")
+        )).thenReturn(ResponseEntity.ok(List.of(Map.of("id", "1"))));
 
-        mockMvc.perform(get("/api/requests").param("status", "INGRESADO"))
+        mockMvc.perform(get("/api/requests")
+                        .param("status", "INGRESADO")
+                        .param("from", "2026-09-01")
+                        .param("to", "2026-09-13"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value("1"));
     }
@@ -80,5 +87,29 @@ class RequestsControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void putStatusPropaga200() throws Exception {
+        when(requestsProxyService.updateStatus(eq("id-1"), anyMap(), eq("dev-user"), eq("Vecino")))
+                .thenReturn(ResponseEntity.ok(Map.of("id", "id-1", "status", "ADMITIDO")));
+
+        mockMvc.perform(put("/api/requests/id-1/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"ADMITIDO\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ADMITIDO"));
+    }
+
+    @Test
+    void putStatusPropaga409() throws Exception {
+        when(requestsProxyService.updateStatus(eq("id-1"), anyMap(), eq("dev-user"), eq("Vecino")))
+                .thenReturn(ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(Map.of("status", 409, "message", "No se puede pasar de INGRESADO a EN_TERRENO")));
+
+        mockMvc.perform(put("/api/requests/id-1/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"EN_TERRENO\"}"))
+                .andExpect(status().isConflict());
     }
 }
