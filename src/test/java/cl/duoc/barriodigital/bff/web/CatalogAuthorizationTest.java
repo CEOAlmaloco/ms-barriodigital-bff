@@ -49,7 +49,7 @@ class CatalogAuthorizationTest {
 
     @Test
     void vecinoPuedeListarElCatalogo() throws Exception {
-        when(catalogProxyService.list()).thenReturn(ResponseEntity.ok(List.of(
+        when(catalogProxyService.list()).thenReturn(ResponseEntity.ok((Object) List.of(
                 Map.of("value", "bache", "label", "Bache en calle")
         )));
 

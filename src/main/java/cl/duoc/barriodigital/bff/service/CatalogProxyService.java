@@ -10,7 +10,6 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClient.RequestBodySpec;
 import org.springframework.web.client.RestClient.RequestHeadersSpec;
 
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -22,7 +21,7 @@ public class CatalogProxyService {
 
     private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE =
             new ParameterizedTypeReference<>() {};
-    private static final ParameterizedTypeReference<List<Map<String, Object>>> LIST_TYPE =
+    private static final ParameterizedTypeReference<Object> JSON_BODY =
             new ParameterizedTypeReference<>() {};
 
     private final RestClient catalogRestClient;
@@ -31,8 +30,8 @@ public class CatalogProxyService {
         this.catalogRestClient = catalogRestClient;
     }
 
-    public ResponseEntity<List<Map<String, Object>>> list() {
-        return exchangeList(catalogRestClient.get().uri("/api/catalog/procedures"));
+    public ResponseEntity<Object> list() {
+        return exchangeJson(catalogRestClient.get().uri("/api/catalog/procedures"));
     }
 
     public ResponseEntity<Map<String, Object>> create(Map<String, Object> body, String rolesHeader) {
@@ -63,11 +62,12 @@ public class CatalogProxyService {
                 .body(response.bodyTo(MAP_TYPE)));
     }
 
-    private ResponseEntity<List<Map<String, Object>>> exchangeList(RequestHeadersSpec<?> spec) {
+    /** Un 200 es una lista. Un error es un objeto. Los dos se reenvían con su status. */
+    private ResponseEntity<Object> exchangeJson(RequestHeadersSpec<?> spec) {
         return spec.exchange((request, response) -> ResponseEntity
                 .status(response.getStatusCode())
                 .contentType(resolveContentType(response.getHeaders().getContentType()))
-                .body(response.bodyTo(LIST_TYPE)));
+                .body(response.bodyTo(JSON_BODY)));
     }
 
     private static MediaType resolveContentType(MediaType contentType) {

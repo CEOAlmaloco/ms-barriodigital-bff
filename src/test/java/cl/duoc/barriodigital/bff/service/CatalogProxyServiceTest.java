@@ -40,10 +40,30 @@ class CatalogProxyServiceTest {
                         "[{\"value\":\"bache\",\"label\":\"Bache en calle\",\"active\":true}]",
                         MediaType.APPLICATION_JSON));
 
-        ResponseEntity<List<Map<String, Object>>> response = service.list();
+        ResponseEntity<Object> response = service.list();
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("bache", response.getBody().get(0).get("value"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> body = (List<Map<String, Object>>) response.getBody();
+        assertEquals("bache", body.get(0).get("value"));
+        server.verify();
+    }
+
+    @Test
+    void listConservaElObjetoDeError() {
+        server.expect(requestTo("http://catalog-test/api/catalog/procedures"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"status\":500,\"message\":\"Oracle no responde\"}"));
+
+        ResponseEntity<Object> response = service.list();
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = (Map<String, Object>) response.getBody();
+        assertEquals(500, ((Number) body.get("status")).intValue());
+        assertEquals("Oracle no responde", body.get("message"));
         server.verify();
     }
 
