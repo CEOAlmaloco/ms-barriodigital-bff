@@ -38,6 +38,7 @@ class RequestsProxyServiceTest {
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(header("X-User-Id", "oid-1"))
                 .andExpect(header("X-User-Roles", "Vecino"))
+                .andExpect(header("X-User-Name", "Alex Ampuero"))
                 .andRespond(withStatus(HttpStatus.CREATED)
                         .contentType(MediaType.APPLICATION_JSON)
                         .body("{\"id\":\"abc\",\"status\":\"INGRESADO\"}"));
@@ -45,7 +46,8 @@ class RequestsProxyServiceTest {
         ResponseEntity<Map<String, Object>> response = service.create(
                 Map.of("description", "Hueco", "procedureType", "bache", "address", "Calle 1"),
                 "oid-1",
-                "Vecino"
+                "Vecino",
+                "Alex Ampuero"
         );
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());

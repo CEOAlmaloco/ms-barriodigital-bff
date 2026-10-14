@@ -57,7 +57,7 @@ public class RequestsController {
         payload.put("description", body.description());
         payload.put("procedureType", body.procedureType());
         payload.put("address", body.address());
-        return requestsProxyService.create(payload, resolveUserId(jwt), resolveRoles(jwt));
+        return requestsProxyService.create(payload, resolveUserId(jwt), resolveRoles(jwt), resolveUserName(jwt));
     }
 
     @GetMapping("/meta/transitions")
@@ -116,6 +116,34 @@ public class RequestsController {
             return sub;
         }
         throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "JWT sin oid/sub");
+    }
+
+    /**
+     * Nombre para el snapshot del alta. Primero el claim name; si no viene, preferred_username.
+     * En perfil dev sin JWT usa el mismo usuario de prueba que el id.
+     */
+    static String resolveUserName(Jwt jwt) {
+        if (jwt == null) {
+            return "dev-user";
+        }
+        String name = readableClaim(jwt.getClaimAsString("name"));
+        if (name != null) {
+            return name;
+        }
+        String preferred = readableClaim(jwt.getClaimAsString("preferred_username"));
+        return preferred == null ? "" : preferred;
+    }
+
+    /** Recorta y descarta un valor vacío o con salto de línea, que no puede ir en un header. */
+    private static String readableClaim(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String value = raw.trim();
+        if (value.isEmpty() || value.indexOf('\r') >= 0 || value.indexOf('\n') >= 0) {
+            return null;
+        }
+        return value;
     }
 
     static String resolveRoles(Jwt jwt) {

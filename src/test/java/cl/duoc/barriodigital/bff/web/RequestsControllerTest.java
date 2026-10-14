@@ -52,7 +52,7 @@ class RequestsControllerTest {
     @Test
     void postCreaSinTitleEnBody() throws Exception {
         when(catalogProxyService.procedures()).thenReturn(CATALOG);
-        when(requestsProxyService.create(anyMap(), eq("dev-user"), eq("Vecino")))
+        when(requestsProxyService.create(anyMap(), eq("dev-user"), eq("Vecino"), eq("dev-user")))
                 .thenReturn(ResponseEntity.status(HttpStatus.CREATED)
                         .body(Map.of("id", "uuid-1", "status", "INGRESADO", "title", "Bache en calle — Calle 1")));
 
@@ -68,7 +68,7 @@ class RequestsControllerTest {
     @Test
     void postConTipoActivoReenviaElBodySinTocarlo() throws Exception {
         when(catalogProxyService.procedures()).thenReturn(CATALOG);
-        when(requestsProxyService.create(anyMap(), eq("dev-user"), eq("Vecino")))
+        when(requestsProxyService.create(anyMap(), eq("dev-user"), eq("Vecino"), eq("dev-user")))
                 .thenReturn(ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", "uuid-2")));
 
         mockMvc.perform(post("/api/requests")
@@ -82,7 +82,8 @@ class RequestsControllerTest {
         verify(requestsProxyService).create(
                 eq(Map.of("description", "Hueco", "procedureType", " Bache ", "address", "Calle 1")),
                 eq("dev-user"),
-                eq("Vecino")
+                eq("Vecino"),
+                eq("dev-user")
         );
     }
 
@@ -100,7 +101,7 @@ class RequestsControllerTest {
                         {"status":400,"error":"Bad Request","message":"procedureType invalido","path":"/api/requests"}
                         """, true));
 
-        verify(requestsProxyService, never()).create(anyMap(), any(), any());
+        verify(requestsProxyService, never()).create(anyMap(), any(), any(), any());
     }
 
     @Test
@@ -117,7 +118,7 @@ class RequestsControllerTest {
                         {"status":400,"error":"Bad Request","message":"El tipo de tramite no esta disponible","path":"/api/requests"}
                         """, true));
 
-        verify(requestsProxyService, never()).create(anyMap(), any(), any());
+        verify(requestsProxyService, never()).create(anyMap(), any(), any(), any());
     }
 
     @Test
@@ -137,7 +138,7 @@ class RequestsControllerTest {
                         {"status":503,"error":"Service Unavailable","message":"El catalogo de tipos de tramite no esta disponible. Intenta nuevamente en unos minutos.","path":"/api/requests"}
                         """, true));
 
-        verify(requestsProxyService, never()).create(anyMap(), any(), any());
+        verify(requestsProxyService, never()).create(anyMap(), any(), any(), any());
     }
 
     @Test
@@ -150,7 +151,7 @@ class RequestsControllerTest {
                 .andExpect(status().isBadRequest());
 
         verify(catalogProxyService, never()).procedures();
-        verify(requestsProxyService, never()).create(anyMap(), any(), any());
+        verify(requestsProxyService, never()).create(anyMap(), any(), any(), any());
     }
 
     @Test
