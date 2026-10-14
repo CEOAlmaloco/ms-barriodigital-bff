@@ -1,5 +1,6 @@
 package cl.duoc.barriodigital.bff.web;
 
+import cl.duoc.barriodigital.bff.service.ProcedureTypeValidator;
 import cl.duoc.barriodigital.bff.service.RequestsProxyService;
 import cl.duoc.barriodigital.bff.web.dto.ChangeStatusDto;
 import cl.duoc.barriodigital.bff.web.dto.CreateRequestDto;
@@ -31,16 +32,27 @@ import java.util.stream.Collectors;
 public class RequestsController {
 
     private final RequestsProxyService requestsProxyService;
+    private final ProcedureTypeValidator procedureTypeValidator;
 
-    public RequestsController(RequestsProxyService requestsProxyService) {
+    public RequestsController(
+            RequestsProxyService requestsProxyService,
+            ProcedureTypeValidator procedureTypeValidator
+    ) {
         this.requestsProxyService = requestsProxyService;
+        this.procedureTypeValidator = procedureTypeValidator;
     }
 
+    /**
+     * El tipo se valida contra catalog antes de llamar a requests.
+     * 400 si no existe o está inactivo, 503 si catalog no responde. En esos casos requests no se llama.
+     */
     @PostMapping
     public ResponseEntity<Map<String, Object>> create(
             @Valid @RequestBody CreateRequestDto body,
             @AuthenticationPrincipal Jwt jwt
     ) {
+        procedureTypeValidator.requireActive(body.procedureType());
+
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("description", body.description());
         payload.put("procedureType", body.procedureType());

@@ -55,6 +55,26 @@ curl.exe -i -X POST http://localhost:8080/api/requests `
 
 Si requests responde 400 o 404, el BFF **conserva** ese status (no lo tapa con 500).
 
+### Tipo de trámite validado contra catalog
+
+Antes de reenviar `POST /api/requests`, el BFF pide `GET /api/catalog/procedures` y busca el `procedureType` del body (recortado y en minúsculas) en el campo `value`. El body que llega a requests no se modifica. El resto de rutas de requests no consulta catalog.
+
+| Caso | Respuesta | `message` |
+|------|-----------|-----------|
+| Existe y `active` es true | se reenvía a requests como siempre | |
+| No existe en catalog | **400** | `procedureType invalido` |
+| Existe pero `active` es false | **400** | `El tipo de tramite no esta disponible` |
+| Catalog sin conexión, sin respuesta a tiempo, con status no 2xx o con cuerpo ilegible | **503** | `El catalogo de tipos de tramite no esta disponible. Intenta nuevamente en unos minutos.` |
+| `procedureType` vacío o ausente | **400** de validación del BFF, sin consultar catalog | |
+
+En los tres errores de la tabla requests no se llama, y el cuerpo tiene la misma forma que los 401 y 403:
+
+```json
+{"status":400,"error":"Bad Request","message":"procedureType invalido","path":"/api/requests"}
+```
+
+El cliente hacia catalog corta a los **2 s** si no conecta y a los **3 s** si no responde.
+
 ## Proxy a catalog (EP1.5-13)
 
 El BFF vuelve a validar el JWT, igual que en requests. `GET /api/catalog/procedures` lo puede llamar cualquier rol autenticado. `POST` y `PUT` exigen Admin: otro rol responde **403** y no llega a catalog.

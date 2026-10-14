@@ -3,13 +3,17 @@ package cl.duoc.barriodigital.bff.service;
 import cl.duoc.barriodigital.bff.web.CatalogCaller;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClient.RequestBodySpec;
 import org.springframework.web.client.RestClient.RequestHeadersSpec;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -19,9 +23,14 @@ import java.util.Map;
 @Service
 public class CatalogProxyService {
 
+    public static final String CATALOG_UNAVAILABLE =
+            "El catalogo de tipos de tramite no esta disponible. Intenta nuevamente en unos minutos.";
+
     private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE =
             new ParameterizedTypeReference<>() {};
     private static final ParameterizedTypeReference<Object> JSON_BODY =
+            new ParameterizedTypeReference<>() {};
+    private static final ParameterizedTypeReference<List<Map<String, Object>>> LIST_TYPE =
             new ParameterizedTypeReference<>() {};
 
     private final RestClient catalogRestClient;
@@ -32,6 +41,27 @@ public class CatalogProxyService {
 
     public ResponseEntity<Object> list() {
         return exchangeJson(catalogRestClient.get().uri("/api/catalog/procedures"));
+    }
+
+    /**
+     * Tipos de trámite para validar el alta de requests. No reenvía nada al cliente:
+     * sin conexión, timeout, status no 2xx o cuerpo ilegible, responde 503.
+     */
+    public List<Map<String, Object>> procedures() {
+        List<Map<String, Object>> procedures;
+        try {
+            procedures = catalogRestClient.get()
+                    .uri("/api/catalog/procedures")
+                    .exchange((request, response) -> response.getStatusCode().is2xxSuccessful()
+                            ? response.bodyTo(LIST_TYPE)
+                            : null);
+        } catch (RestClientException ex) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, CATALOG_UNAVAILABLE, ex);
+        }
+        if (procedures == null) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, CATALOG_UNAVAILABLE);
+        }
+        return procedures;
     }
 
     public ResponseEntity<Map<String, Object>> create(Map<String, Object> body, String rolesHeader) {

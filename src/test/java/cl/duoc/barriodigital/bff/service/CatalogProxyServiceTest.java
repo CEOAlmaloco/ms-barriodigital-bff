@@ -8,11 +8,15 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -123,5 +127,93 @@ class CatalogProxyServiceTest {
         assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
         assertEquals("El codigo value ya existe", response.getBody().get("message"));
         server.verify();
+    }
+
+    @Test
+    void proceduresDevuelveLosTiposParaValidar() {
+        server.expect(requestTo("http://catalog-test/api/catalog/procedures"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(
+                        "[{\"value\":\"bache\",\"label\":\"Bache en calle\",\"active\":true,\"dailyQuota\":10}]",
+                        MediaType.APPLICATION_JSON));
+
+        List<Map<String, Object>> procedures = service.procedures();
+
+        assertEquals(1, procedures.size());
+        assertEquals("bache", procedures.get(0).get("value"));
+        assertEquals(true, procedures.get(0).get("active"));
+        server.verify();
+    }
+
+    @Test
+    void proceduresConCatalogEn500Responde503() {
+        server.expect(requestTo("http://catalog-test/api/catalog/procedures"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"status\":500,\"message\":\"Oracle no responde\"}"));
+
+        assertCatalogUnavailable();
+        server.verify();
+    }
+
+    @Test
+    void proceduresConCatalogEn404Responde503() {
+        server.expect(requestTo("http://catalog-test/api/catalog/procedures"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.NOT_FOUND));
+
+        assertCatalogUnavailable();
+        server.verify();
+    }
+
+    @Test
+    void proceduresSinConexionResponde503() {
+        server.expect(requestTo("http://catalog-test/api/catalog/procedures"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(request -> {
+                    throw new IOException("Connection refused");
+                });
+
+        assertCatalogUnavailable();
+        server.verify();
+    }
+
+    @Test
+    void proceduresConTimeoutResponde503() {
+        server.expect(requestTo("http://catalog-test/api/catalog/procedures"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(request -> {
+                    throw new SocketTimeoutException("Read timed out");
+                });
+
+        assertCatalogUnavailable();
+        server.verify();
+    }
+
+    @Test
+    void proceduresConCuerpoIlegibleResponde503() {
+        server.expect(requestTo("http://catalog-test/api/catalog/procedures"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("{\"no\":\"es una lista\"}", MediaType.APPLICATION_JSON));
+
+        assertCatalogUnavailable();
+        server.verify();
+    }
+
+    @Test
+    void proceduresConCuerpoVacioResponde503() {
+        server.expect(requestTo("http://catalog-test/api/catalog/procedures"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess());
+
+        assertCatalogUnavailable();
+        server.verify();
+    }
+
+    private void assertCatalogUnavailable() {
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> service.procedures());
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, ex.getStatusCode());
+        assertEquals(CatalogProxyService.CATALOG_UNAVAILABLE, ex.getReason());
     }
 }
