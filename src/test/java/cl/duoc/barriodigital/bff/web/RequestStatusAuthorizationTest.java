@@ -1,6 +1,7 @@
 package cl.duoc.barriodigital.bff.web;
 
 import cl.duoc.barriodigital.bff.service.RequestsProxyService;
+import cl.duoc.barriodigital.bff.service.CatalogProxyService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -47,10 +48,17 @@ class RequestStatusAuthorizationTest {
     @MockBean
     RequestsProxyService requestsProxyService;
 
+    @MockBean
+    CatalogProxyService catalogProxyService;
+
     @Test
     void funcionarioCambiaEstado200() throws Exception {
-        when(requestsProxyService.updateStatus(eq("id-1"), anyMap(), any(), any()))
-                .thenReturn(ResponseEntity.ok(Map.of("id", "id-1", "status", "ADMITIDO")));
+        when(requestsProxyService.getById("id-1", "func-1", "Funcionario"))
+                .thenReturn(ResponseEntity.ok(Map.of("id", "id-1", "procedureType", "bache")));
+        when(catalogProxyService.reserve("bache")).thenReturn(org.springframework.http.HttpStatus.OK);
+        when(requestsProxyService.updateStatusForAdmission(eq("id-1"), anyMap(), any(), any()))
+                .thenReturn(new RequestsProxyService.StatusChangeResult(
+                        ResponseEntity.ok(Map.of("id", "id-1", "status", "ADMITIDO")), true));
 
         mockMvc.perform(put("/api/requests/id-1/status")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -61,7 +69,7 @@ class RequestStatusAuthorizationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("ADMITIDO"));
 
-        verify(requestsProxyService).updateStatus(eq("id-1"), anyMap(), eq("func-1"), eq("Funcionario"));
+        verify(requestsProxyService).updateStatusForAdmission(eq("id-1"), anyMap(), eq("func-1"), eq("Funcionario"));
     }
 
     @Test
@@ -76,6 +84,7 @@ class RequestStatusAuthorizationTest {
                 .andExpect(jsonPath("$.status").value(403));
 
         verify(requestsProxyService, never()).updateStatus(anyString(), anyMap(), any(), any());
+        org.mockito.Mockito.verifyNoInteractions(catalogProxyService);
     }
 
     @Test
@@ -89,6 +98,7 @@ class RequestStatusAuthorizationTest {
                 .andExpect(status().isForbidden());
 
         verify(requestsProxyService, never()).updateStatus(anyString(), anyMap(), any(), any());
+        org.mockito.Mockito.verifyNoInteractions(catalogProxyService);
     }
 
     @Test
@@ -97,6 +107,22 @@ class RequestStatusAuthorizationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"ADMITIDO\"}"))
                 .andExpect(status().isUnauthorized());
+        org.mockito.Mockito.verifyNoInteractions(requestsProxyService, catalogProxyService);
+    }
+
+    @Test
+    void propagaElRolSingularQueAceptoElConverter() throws Exception {
+        when(requestsProxyService.getById("id-1", "func-1", "Funcionario"))
+                .thenReturn(ResponseEntity.ok(Map.of("id", "id-1", "procedureType", "bache")));
+        when(catalogProxyService.reserve("bache")).thenReturn(org.springframework.http.HttpStatus.CONFLICT);
+        mockMvc.perform(put("/api/requests/id-1/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\" ADMITIDO \"}")
+                        .header("Authorization", "Bearer singular-funcionario"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("QUOTA_EXHAUSTED"))
+                .andExpect(jsonPath("$.message").value("No queda cupo disponible para este tipo de trámite."));
+        verify(requestsProxyService).getById("id-1", "func-1", "Funcionario");
     }
 
     @TestConfiguration
@@ -107,7 +133,9 @@ class RequestStatusAuthorizationTest {
             return token -> Jwt.withTokenValue(token)
                     .header("alg", "none")
                     .subject("test")
-                    .claim("roles", List.of("Vecino"))
+                    .claim(token.equals("singular-funcionario") ? "role" : "roles",
+                            token.equals("singular-funcionario") ? "ROLE_Funcionario" : List.of("Vecino"))
+                    .claim("oid", "func-1")
                     .issuedAt(Instant.now())
                     .expiresAt(Instant.now().plusSeconds(3600))
                     .build();

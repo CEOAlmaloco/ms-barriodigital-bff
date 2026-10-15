@@ -27,6 +27,8 @@ barriodigital:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
   requests:
     base-url: ${REQUESTS_BASE_URL:http://localhost:8081}
+    connect-timeout: ${REQUESTS_CONNECT_TIMEOUT:2s}
+    read-timeout: ${REQUESTS_READ_TIMEOUT:3s}
   catalog:
     base-url: ${CATALOG_BASE_URL:http://localhost:8082}
 

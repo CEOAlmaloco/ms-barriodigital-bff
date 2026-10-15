@@ -81,6 +81,19 @@ public class CatalogProxyService {
         return exchangeMap(withRoles(spec, rolesHeader).body(body));
     }
 
+    /** El 200 confirma la operación; no necesitamos deserializar su recurso. Sin reintentos. */
+    public HttpStatusCode reserve(String value) {
+        return catalogRestClient.post()
+                .uri("/api/catalog/procedures/{value}/reserve", value)
+                .exchange((request, response) -> response.getStatusCode());
+    }
+
+    public HttpStatusCode release(String value) {
+        return catalogRestClient.post()
+                .uri("/api/catalog/procedures/{value}/release", value)
+                .exchange((request, response) -> response.getStatusCode());
+    }
+
     private static RequestBodySpec withRoles(RequestBodySpec spec, String rolesHeader) {
         if (rolesHeader == null || rolesHeader.isBlank()) {
             return spec;

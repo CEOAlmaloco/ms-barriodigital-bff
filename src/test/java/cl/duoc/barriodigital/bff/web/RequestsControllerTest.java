@@ -196,13 +196,22 @@ class RequestsControllerTest {
     @Test
     void putStatusPropaga200() throws Exception {
         when(requestsProxyService.updateStatus(eq("id-1"), anyMap(), eq("dev-user"), eq("Vecino")))
-                .thenReturn(ResponseEntity.ok(Map.of("id", "id-1", "status", "ADMITIDO")));
+                .thenReturn(ResponseEntity.ok(Map.of("id", "id-1", "status", "EN_GESTION")));
 
         mockMvc.perform(put("/api/requests/id-1/status")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"status\":\"ADMITIDO\"}"))
+                        .content("{\"status\":\"EN_GESTION\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("ADMITIDO"));
+                .andExpect(jsonPath("$.status").value("EN_GESTION"));
+    }
+
+    @Test
+    void devSinJwtNoReservaCupo() throws Exception {
+        mockMvc.perform(put("/api/requests/id-1/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"ADMITIDO\"}"))
+                .andExpect(status().isForbidden());
+        org.mockito.Mockito.verifyNoInteractions(requestsProxyService, catalogProxyService);
     }
 
     @Test

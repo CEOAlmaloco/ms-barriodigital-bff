@@ -1,5 +1,6 @@
 package cl.duoc.barriodigital.bff.web;
 
+import cl.duoc.barriodigital.bff.service.AdmissionException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +27,9 @@ public class BffExceptionHandler {
         body.put("error", errorName(status));
         body.put("message", ex.getReason() == null ? "" : ex.getReason());
         body.put("path", request.getRequestURI());
+        if (ex instanceof AdmissionException admission) {
+            body.put("code", admission.code());
+        }
         return ResponseEntity.status(status).body(body);
     }
 

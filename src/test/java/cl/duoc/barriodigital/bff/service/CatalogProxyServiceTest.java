@@ -38,6 +38,16 @@ class CatalogProxyServiceTest {
         service = new CatalogProxyService(client);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"reserve", "release"})
+    void cuposConfirman200SinInterpretarElCuerpo(String operation) {
+        server.expect(requestTo("http://catalog-test/api/catalog/procedures/bache/" + operation))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess("{ilegible", MediaType.APPLICATION_JSON));
+        assertEquals(200, (operation.equals("reserve") ? service.reserve("bache") : service.release("bache")).value());
+        server.verify();
+    }
+
     @Test
     void listReenviaLosTipos() {
         server.expect(requestTo("http://catalog-test/api/catalog/procedures"))
