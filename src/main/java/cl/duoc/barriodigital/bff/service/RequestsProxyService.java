@@ -6,6 +6,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClient.RequestBodySpec;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.List;
@@ -107,16 +108,40 @@ public class RequestsProxyService {
             String userId,
             String roles
     ) {
+        return statusRequest(id, body, userId, roles)
+                .exchange((request, response) -> ResponseEntity
+                        .status(response.getStatusCode())
+                        .contentType(resolveContentType(response.getHeaders().getContentType()))
+                        .body(response.bodyTo(MAP_TYPE)));
+    }
+
+    /** Conserva el HTTP observado aunque falle después la lectura del cuerpo. */
+    public StatusChangeResult updateStatusForAdmission(
+            String id, Map<String, Object> body, String userId, String roles
+    ) {
+        return statusRequest(id, body, userId, roles).exchange((request, response) -> {
+            var status = response.getStatusCode();
+            try {
+                return new StatusChangeResult(ResponseEntity.status(status)
+                        .contentType(resolveContentType(response.getHeaders().getContentType()))
+                        .body(response.bodyTo(MAP_TYPE)), true);
+            } catch (Exception ex) {
+                // Solo la conversión de esta respuesta: no convierte un fallo de envío en rechazo.
+                return new StatusChangeResult(ResponseEntity.status(status).build(), false);
+            }
+        });
+    }
+
+    public record StatusChangeResult(ResponseEntity<Map<String, Object>> response, boolean readable) {
+    }
+
+    private RequestBodySpec statusRequest(String id, Map<String, Object> body, String userId, String roles) {
         return requestsRestClient.put()
                 .uri("/api/requests/{id}/status", id)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header(HEADER_USER_ID, userId)
                 .header(HEADER_USER_ROLES, nullToEmpty(roles))
-                .body(body)
-                .exchange((request, response) -> ResponseEntity
-                        .status(response.getStatusCode())
-                        .contentType(resolveContentType(response.getHeaders().getContentType()))
-                        .body(response.bodyTo(MAP_TYPE)));
+                .body(body);
     }
 
     private static MediaType resolveContentType(MediaType contentType) {

@@ -90,7 +90,7 @@ En el POST de alta manda además `X-User-Name`, leído del claim `name` del JWT 
 Filtros `from`/`to`: fecha `yyyy-MM-dd`.
 
 Cambio de estado (EP1.5-06). Vecino/Admin/Auditor → **403** en el BFF (no llega a requests).  
-200 / 400 / 404 / 409 se **copian** del micro de requests (no se tapan con 500). Cupo al admitir = EP1.5-18.
+200 / 400 / 404 / 409 se **copian** del micro de requests; al admitir, los rechazos reconocidos se devuelven después de confirmar la compensación de cupo (EP1.5-18).
 
 ```powershell
 curl.exe -i -X PUT http://localhost:8080/api/requests/ID/status `
@@ -246,5 +246,49 @@ Health: `http://localhost:8080/actuator/health`
 ## Qué NO está aún (a propósito)
 
 - GET `/api/requests/meta/transitions` (EP1.5-07)
-- Orquestación de cupo al admitir (EP1.5-18)
 - Rabbit / notify / Kafka (EP3)
+
+## Admisión y cupo (EP1.5-18)
+
+`PUT /api/requests/{id}/status` mantiene URL, payload (`status`, `rejectionReason`) y recurso completo en el 200 normal. Solo Funcionario puede cambiar estados; Admin sin Funcionario no tiene override. El controller propaga las autoridades que autorizó Spring Security, también cuando el converter aceptó `role` o `ROLE_*`. En dev sin JWT sigue usando Vecino y la admisión se rechaza antes de consultar Catalog.
+
+`RequestStatusOrchestrationService` coordina únicamente el destino `ADMITIDO`, comparando después de `trim()` sin convertir mayúsculas. ` ADMITIDO ` reserva; `admitido` sigue llegando a la validación de Requests como inválido. El payload original se conserva. Los demás destinos usan el proxy anterior, sin consulta adicional ni llamadas a Catalog; rechazar no devuelve cupo.
+
+Orden: GET del trámite con identidad real → POST reserve del `procedureType` persistido → PUT de estado. No se confía en un tipo del frontend, no se consulta `remainingQuota` para autorizar y no se omite reserve por cupo ilimitado. Catalog tampoco prohíbe reservar un tipo inactivo. El GET no bloquea el trámite ni garantiza su estado posterior.
+
+Requests conserva la autoridad sobre las transiciones y debe desplegarse con la protección de `fix/request-status-concurrency`: bloqueo pesimista de la fila durante lectura, validación y guardado de **todas** las transiciones. La transacción de Requests no incluye Catalog. El frontend coordinado, `fix/frontend-admission-errors`, interpreta `code` y evita reenviar desde el diálogo después de incertidumbre.
+
+### Errores nuevos de coordinación
+
+Son decisiones de EP1.5-18. El cuerpo conserva `status`, `error`, `message`, `path` y añade `code`:
+
+| Fase / situación | HTTP | code | message |
+|---|---|---|---|
+| Reserva: sin cupo | 409 | QUOTA_EXHAUSTED | No queda cupo disponible para este tipo de trámite. |
+| Reserva: tipo inexistente | 409 | PROCEDURE_TYPE_UNAVAILABLE | El tipo de trámite asociado ya no está disponible en el catálogo. |
+| Consulta: cuerpo inválido o sin tipo válido | 502 | ADMISSION_DEPENDENCY_INVALID_RESPONSE | No pudimos obtener información válida del trámite. |
+| Consulta: transporte o 5xx | 503 | ADMISSION_DEPENDENCY_UNAVAILABLE | No pudimos consultar el trámite. Intenta consultar el listado más tarde. |
+| Reserva: transporte o HTTP distinto de 200/404/409 | 502 | QUOTA_RESERVATION_UNCONFIRMED | No pudimos confirmar la reserva de cupo. Cierra y consulta el listado; la operación requiere revisión. |
+| PUT: sin respuesta o sin rechazo reconocible | 502 | ADMISSION_RESULT_UNCONFIRMED | No pudimos confirmar si el cambio se guardó. Cierra y consulta el listado antes de realizar otra operación. |
+| PUT: 200 observado, recurso ilegible o incompatible | 502 | ADMISSION_RESPONSE_UNAVAILABLE | El cambio se guardó, pero no pudimos obtener su respuesta completa. Cierra y actualiza el listado. |
+| Release: transporte o HTTP distinto de 200 | 502 | QUOTA_COMPENSATION_UNCONFIRMED | El cambio fue rechazado y no pudimos confirmar la devolución del cupo. La operación requiere revisión. |
+
+Un error de negocio reconocible del GET se conserva sin reservar. Un rechazo del PUT se reconoce por HTTP, `status` del cuerpo, `path` de esa operación y mensaje controlado de Requests (400/403/404/409). Solo entonces se intenta **un** release. Si confirma 200, se devuelve el rechazo original de Requests. Si no confirma, se devuelve QUOTA_COMPENSATION_UNCONFIRMED y se registran ambos resultados mediante un identificador local del intento. Ese identificador no es una clave de idempotencia.
+
+Un 5xx, timeout, desconexión o rechazo ilegible del PUT no demuestra rollback: no libera. Un 200 del PUT seguido de un cuerpo ilegible tampoco libera ni fabrica un recurso. Reserve y release se clasifican por su HTTP; sus cuerpos no se deserializan. No se usa un GET posterior como prueba de qué intento produjo el estado observado.
+
+### Timeouts y operación
+
+RestClient síncrono, sin reintentos de aplicación. Requests usa JDK HttpClient con `barriodigital.requests.connect-timeout` (`REQUESTS_CONNECT_TIMEOUT`, default `2s`) y `barriodigital.requests.read-timeout` (`REQUESTS_READ_TIMEOUT`, default `3s`), siguiendo el cliente de Catalog (2s/3s). Son límites cortos para operaciones internas pequeñas; pueden ajustarse según latencia real. Limitar la espera no cancela ni prueba la reversión de una escritura. No se garantiza una única transmisión física del transporte JDK.
+
+`CATALOG_BASE_URL` configura el cliente existente (default local, puerto 8082). Los Compose inspeccionados de Infra todavía no incluyen Catalog ni esa variable para el BFF. Debe estar conectado al servicio correcto antes de una prueba integrada; dentro del contenedor, localhost no identifica otro contenedor. No se modificó infraestructura.
+
+### Límites y verificación
+
+Reserve/release no reciben identificador de trámite, reserva u operación. Repetirlos puede modificar otra vez el contador; el tope de release no aporta idempotencia. Una caída del BFF después de reservar puede dejar coordinación incompleta. Respuestas perdidas y compensaciones fallidas no tienen recuperación durable automática.
+
+Release no identifica la jornada original ni aplica reset: una compensación de ayer puede afectar el contador de hoy si ya hubo reset. Cambios administrativos del límite, y GET/PUT de Catalog con lecturas sin el mismo bloqueo, también limitan la coordinación. Corregir la concurrencia de Requests no resuelve esos casos. No es una transacción distribuida ni una garantía de exactamente una ejecución o de recuperación de todo cupo.
+
+Los logs de coordinación contienen fase, id de trámite, tipo, intento local, HTTP conocido, categoría y resultado de compensación. No incluyen tokens, headers completos, payload, solicitante, dirección ni motivo. Los logs no recuperan cupos.
+
+Pruebas: `.\mvnw.cmd verify`, con Mockito, MockMvc y MockRestServiceServer. Los mocks comprueban orden y clasificación, no integración real. La concurrencia de Requests se prueba con transacciones independientes en H2; falta validarla en Oracle desplegado. El documento compartido `barriodigital-infra/docs/decisiones.md` requiere una actualización coordinada sobre rechazos confirmados, incertidumbre, códigos y límites; no se modifica en esta tarea.

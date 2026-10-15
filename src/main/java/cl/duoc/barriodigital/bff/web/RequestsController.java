@@ -2,12 +2,15 @@ package cl.duoc.barriodigital.bff.web;
 
 import cl.duoc.barriodigital.bff.service.ProcedureTypeValidator;
 import cl.duoc.barriodigital.bff.service.RequestsProxyService;
+import cl.duoc.barriodigital.bff.service.RequestStatusOrchestrationService;
 import cl.duoc.barriodigital.bff.web.dto.ChangeStatusDto;
 import cl.duoc.barriodigital.bff.web.dto.CreateRequestDto;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,13 +36,16 @@ public class RequestsController {
 
     private final RequestsProxyService requestsProxyService;
     private final ProcedureTypeValidator procedureTypeValidator;
+    private final RequestStatusOrchestrationService statusOrchestration;
 
     public RequestsController(
             RequestsProxyService requestsProxyService,
-            ProcedureTypeValidator procedureTypeValidator
+            ProcedureTypeValidator procedureTypeValidator,
+            RequestStatusOrchestrationService statusOrchestration
     ) {
         this.requestsProxyService = requestsProxyService;
         this.procedureTypeValidator = procedureTypeValidator;
+        this.statusOrchestration = statusOrchestration;
     }
 
     /**
@@ -85,18 +91,24 @@ public class RequestsController {
 
     /**
      * EP1.5-06. 403 de no-Funcionario lo corta AzureSecurityConfig (no llega acá).
-     * 200/400/404/409 salen de requests.
+     * EP1.5-18: el servicio coordina cupo solo para ADMITIDO.
      */
     @PutMapping("/{id}/status")
     public ResponseEntity<Map<String, Object>> updateStatus(
             @PathVariable String id,
             @Valid @RequestBody ChangeStatusDto body,
-            @AuthenticationPrincipal Jwt jwt
+            @AuthenticationPrincipal Jwt jwt,
+            Authentication authentication
     ) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("status", body.status());
         payload.put("rejectionReason", body.rejectionReason());
-        return requestsProxyService.updateStatus(id, payload, resolveUserId(jwt), resolveRoles(jwt));
+        // Las autoridades son las mismas que autorizó Security, incluidos role y ROLE_*.
+        String roles = jwt == null ? resolveRoles(null) : authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .map(role -> role.startsWith("ROLE_") ? role.substring(5) : role)
+                .collect(Collectors.joining(","));
+        return statusOrchestration.updateStatus(id, payload, resolveUserId(jwt), roles);
     }
 
     /**
