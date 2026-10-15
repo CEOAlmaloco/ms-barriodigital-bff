@@ -4,6 +4,7 @@ import cl.duoc.barriodigital.bff.web.CatalogCaller;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,8 @@ public class CatalogProxyService {
 
     public static final String CATALOG_UNAVAILABLE =
             "El catalogo de tipos de tramite no esta disponible. Intenta nuevamente en unos minutos.";
+
+    public static final String CATALOG_ERROR = "No pudimos procesar la solicitud. Intenta nuevamente.";
 
     private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE =
             new ParameterizedTypeReference<>() {};
@@ -86,18 +89,41 @@ public class CatalogProxyService {
     }
 
     private ResponseEntity<Map<String, Object>> exchangeMap(RequestHeadersSpec<?> spec) {
-        return spec.exchange((request, response) -> ResponseEntity
+        return spec.exchange((request, response) -> {
+            if (response.getStatusCode().is5xxServerError()) {
+                return ResponseEntity.status(response.getStatusCode())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(serverError(response.getStatusCode()));
+            }
+            return ResponseEntity
                 .status(response.getStatusCode())
                 .contentType(resolveContentType(response.getHeaders().getContentType()))
-                .body(response.bodyTo(MAP_TYPE)));
+                .body(response.bodyTo(MAP_TYPE));
+        });
     }
 
-    /** Un 200 es una lista. Un error es un objeto. Los dos se reenvían con su status. */
+    /** Un 200 es una lista. Los errores 5xx nunca reenvían detalles internos del servicio. */
     private ResponseEntity<Object> exchangeJson(RequestHeadersSpec<?> spec) {
-        return spec.exchange((request, response) -> ResponseEntity
+        return spec.exchange((request, response) -> {
+            if (response.getStatusCode().is5xxServerError()) {
+                return ResponseEntity.status(response.getStatusCode())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body((Object) serverError(response.getStatusCode()));
+            }
+            return ResponseEntity
                 .status(response.getStatusCode())
                 .contentType(resolveContentType(response.getHeaders().getContentType()))
-                .body(response.bodyTo(JSON_BODY)));
+                .body(response.bodyTo(JSON_BODY));
+        });
+    }
+
+    private static Map<String, Object> serverError(HttpStatusCode status) {
+        HttpStatus resolved = HttpStatus.resolve(status.value());
+        return Map.of(
+                "status", status.value(),
+                "error", resolved == null ? "Server Error" : resolved.getReasonPhrase(),
+                "message", CATALOG_ERROR
+        );
     }
 
     private static MediaType resolveContentType(MediaType contentType) {

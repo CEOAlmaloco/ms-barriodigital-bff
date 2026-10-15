@@ -82,6 +82,8 @@ El BFF vuelve a validar el JWT, igual que en requests. `GET /api/catalog/procedu
 Variable: `CATALOG_BASE_URL` (default `http://localhost:8082`).
 
 El BFF arma el header `X-User-Roles` desde el claim `roles` del token y se lo manda a catalog. Catalog no lee el JWT.
+
+El proxy de catálogo conserva los estados HTTP, pero reemplaza el cuerpo de cualquier 5xx por un mensaje genérico: no reenvía SQL, excepciones ni trazas del servicio interno. Los errores de negocio 400/403/404/409 mantienen su contrato.
 Body de alta (sin `title`): `description`, `procedureType`, `address`.  
 El BFF manda `X-User-Id` (oid/sub del JWT) y `X-User-Roles` a requests.  
 Filtros `from`/`to`: fecha `yyyy-MM-dd`.

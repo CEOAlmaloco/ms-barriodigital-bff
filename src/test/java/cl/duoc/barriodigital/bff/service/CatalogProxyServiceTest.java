@@ -2,6 +2,8 @@ package cl.duoc.barriodigital.bff.service;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -54,7 +56,7 @@ class CatalogProxyServiceTest {
     }
 
     @Test
-    void listConservaElObjetoDeError() {
+    void listConservaElEstadoPeroNoExponeDetallesDelErrorInterno() {
         server.expect(requestTo("http://catalog-test/api/catalog/procedures"))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -67,7 +69,33 @@ class CatalogProxyServiceTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> body = (Map<String, Object>) response.getBody();
         assertEquals(500, ((Number) body.get("status")).intValue());
-        assertEquals("Oracle no responde", body.get("message"));
+        assertEquals(Map.of("status", 500, "error", "Internal Server Error",
+                "message", CatalogProxyService.CATALOG_ERROR), body);
+        server.verify();
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {500, 502, 503})
+    void escriturasNoReenvianCuerposTecnicosNiHtmlDeErroresInternos(int status) {
+        for (HttpMethod method : List.of(HttpMethod.POST, HttpMethod.PUT)) {
+            String path = method == HttpMethod.POST ? "/api/catalog/procedures" : "/api/catalog/procedures/bache";
+            server.expect(requestTo("http://catalog-test" + path))
+                    .andExpect(method(method))
+                    .andRespond(withStatus(HttpStatus.valueOf(status))
+                            .contentType(MediaType.TEXT_HTML)
+                            .body("<html>ORA-01407 BARRIODIGITAL.PROCEDURE_TYPES update procedure_types stacktrace</html>"));
+        }
+
+        for (HttpMethod method : List.of(HttpMethod.POST, HttpMethod.PUT)) {
+            Map<String, Object> requestBody = Map.of("label", "Bache", "active", true);
+            ResponseEntity<Map<String, Object>> response = method == HttpMethod.POST
+                    ? service.create(requestBody, "Admin")
+                    : service.update("bache", requestBody, "Admin");
+            assertEquals(status, response.getStatusCode().value());
+            assertEquals(MediaType.APPLICATION_JSON, response.getHeaders().getContentType());
+            assertEquals(Map.of("status", status, "error", HttpStatus.valueOf(status).getReasonPhrase(),
+                    "message", CatalogProxyService.CATALOG_ERROR), response.getBody());
+        }
         server.verify();
     }
 
