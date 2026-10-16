@@ -21,7 +21,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.util.UriUtils;
 
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,13 +53,14 @@ public class RequestsController {
     /**
      * El tipo se valida contra catalog antes de llamar a requests.
      * 400 si no existe o está inactivo, 503 si catalog no responde. En esos casos requests no se llama.
+     * El label del tipo viaja en X-Procedure-Label para el snapshot. Sin label en catalog no se manda.
      */
     @PostMapping
     public ResponseEntity<Map<String, Object>> create(
             @Valid @RequestBody CreateRequestDto body,
             @AuthenticationPrincipal Jwt jwt
     ) {
-        procedureTypeValidator.requireActive(body.procedureType());
+        String procedureLabel = procedureTypeValidator.requireActive(body.procedureType());
 
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("description", body.description());
@@ -68,8 +71,20 @@ public class RequestsController {
                 resolveUserId(jwt),
                 resolveRoles(jwt),
                 resolveUserName(jwt),
-                resolveUserEmail(jwt)
+                resolveUserEmail(jwt),
+                encodeProcedureLabel(procedureLabel)
         );
+    }
+
+    /**
+     * Un header no lleva tildes de forma segura, así que el label va codificado en URL (UTF-8).
+     * UriUtils codifica el espacio como %20 y el + como %2B; requests lo lee con URLDecoder.
+     */
+    static String encodeProcedureLabel(String label) {
+        if (label == null || label.isBlank()) {
+            return null;
+        }
+        return UriUtils.encode(label, StandardCharsets.UTF_8);
     }
 
     @GetMapping("/meta/transitions")
