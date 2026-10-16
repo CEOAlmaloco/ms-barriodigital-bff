@@ -16,7 +16,7 @@ import java.util.Optional;
 /**
  * Proxy hacia ms-barriodigital-requests.
  * Reenvía X-User-Id / X-User-Roles tomados del JWT (nunca del body del cliente).
- * X-User-Name solo va en el alta: es el snapshot que requests guarda al crear.
+ * X-User-Name y X-User-Email solo van en el alta: son el snapshot que requests guarda al crear.
  */
 @Service
 public class RequestsProxyService {
@@ -24,6 +24,7 @@ public class RequestsProxyService {
     public static final String HEADER_USER_ID = "X-User-Id";
     public static final String HEADER_USER_ROLES = "X-User-Roles";
     public static final String HEADER_USER_NAME = "X-User-Name";
+    public static final String HEADER_USER_EMAIL = "X-User-Email";
 
     private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE =
             new ParameterizedTypeReference<>() {};
@@ -42,7 +43,8 @@ public class RequestsProxyService {
             Map<String, Object> body,
             String userId,
             String roles,
-            String userName
+            String userName,
+            String userEmail
     ) {
         return requestsRestClient.post()
                 .uri("/api/requests")
@@ -50,6 +52,7 @@ public class RequestsProxyService {
                 .header(HEADER_USER_ID, userId)
                 .header(HEADER_USER_ROLES, nullToEmpty(roles))
                 .header(HEADER_USER_NAME, nullToEmpty(userName))
+                .header(HEADER_USER_EMAIL, nullToEmpty(userEmail))
                 .body(body)
                 .exchange((request, response) -> ResponseEntity
                         .status(response.getStatusCode())

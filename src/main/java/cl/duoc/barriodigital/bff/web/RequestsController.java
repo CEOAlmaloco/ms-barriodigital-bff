@@ -63,7 +63,13 @@ public class RequestsController {
         payload.put("description", body.description());
         payload.put("procedureType", body.procedureType());
         payload.put("address", body.address());
-        return requestsProxyService.create(payload, resolveUserId(jwt), resolveRoles(jwt), resolveUserName(jwt));
+        return requestsProxyService.create(
+                payload,
+                resolveUserId(jwt),
+                resolveRoles(jwt),
+                resolveUserName(jwt),
+                resolveUserEmail(jwt)
+        );
     }
 
     @GetMapping("/meta/transitions")
@@ -141,6 +147,22 @@ public class RequestsController {
         String name = readableClaim(jwt.getClaimAsString("name"));
         if (name != null) {
             return name;
+        }
+        String preferred = readableClaim(jwt.getClaimAsString("preferred_username"));
+        return preferred == null ? "" : preferred;
+    }
+
+    /**
+     * Email para el snapshot del alta. Primero el claim email; en tokens v2 de Entra a menudo no viene,
+     * y entonces se usa preferred_username. No se lee del body. Sin JWT el header viaja vacío.
+     */
+    static String resolveUserEmail(Jwt jwt) {
+        if (jwt == null) {
+            return "";
+        }
+        String email = readableClaim(jwt.getClaimAsString("email"));
+        if (email != null) {
+            return email;
         }
         String preferred = readableClaim(jwt.getClaimAsString("preferred_username"));
         return preferred == null ? "" : preferred;
