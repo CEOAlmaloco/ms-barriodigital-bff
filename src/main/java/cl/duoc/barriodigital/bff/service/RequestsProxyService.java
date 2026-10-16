@@ -16,7 +16,7 @@ import java.util.Optional;
 /**
  * Proxy hacia ms-barriodigital-requests.
  * Reenvía X-User-Id / X-User-Roles tomados del JWT (nunca del body del cliente).
- * X-User-Name y X-User-Email solo van en el alta: son el snapshot que requests guarda al crear.
+ * X-User-Name, X-User-Email y X-Procedure-Label solo van en el alta: son el snapshot que requests guarda al crear.
  */
 @Service
 public class RequestsProxyService {
@@ -25,6 +25,8 @@ public class RequestsProxyService {
     public static final String HEADER_USER_ROLES = "X-User-Roles";
     public static final String HEADER_USER_NAME = "X-User-Name";
     public static final String HEADER_USER_EMAIL = "X-User-Email";
+    /** Ya viene codificado en URL (UTF-8) desde el controller. */
+    public static final String HEADER_PROCEDURE_LABEL = "X-Procedure-Label";
 
     private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE =
             new ParameterizedTypeReference<>() {};
@@ -44,15 +46,17 @@ public class RequestsProxyService {
             String userId,
             String roles,
             String userName,
-            String userEmail
+            String userEmail,
+            String procedureLabel
     ) {
-        return requestsRestClient.post()
+        RequestBodySpec spec = requestsRestClient.post()
                 .uri("/api/requests")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header(HEADER_USER_ID, userId)
                 .header(HEADER_USER_ROLES, nullToEmpty(roles))
                 .header(HEADER_USER_NAME, nullToEmpty(userName))
-                .header(HEADER_USER_EMAIL, nullToEmpty(userEmail))
+                .header(HEADER_USER_EMAIL, nullToEmpty(userEmail));
+        return withProcedureLabel(spec, procedureLabel)
                 .body(body)
                 .exchange((request, response) -> ResponseEntity
                         .status(response.getStatusCode())
@@ -145,6 +149,14 @@ public class RequestsProxyService {
                 .header(HEADER_USER_ID, userId)
                 .header(HEADER_USER_ROLES, nullToEmpty(roles))
                 .body(body);
+    }
+
+    /** A diferencia de los otros headers, sin label no se manda vacío: se omite. */
+    private static RequestBodySpec withProcedureLabel(RequestBodySpec spec, String procedureLabel) {
+        if (procedureLabel == null || procedureLabel.isBlank()) {
+            return spec;
+        }
+        return spec.header(HEADER_PROCEDURE_LABEL, procedureLabel);
     }
 
     private static MediaType resolveContentType(MediaType contentType) {

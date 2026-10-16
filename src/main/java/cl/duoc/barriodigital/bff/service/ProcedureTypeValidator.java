@@ -25,9 +25,13 @@ public class ProcedureTypeValidator {
         this.catalogProxyService = catalogProxyService;
     }
 
-    public void requireActive(String rawProcedureType) {
+    /**
+     * Devuelve el label del tipo encontrado, recortado, para el snapshot de requests.
+     * Null si el item de catalog no trae label (o viene vacío) y si el código viene vacío.
+     */
+    public String requireActive(String rawProcedureType) {
         if (rawProcedureType == null || rawProcedureType.isBlank()) {
-            return;
+            return null;
         }
         String code = rawProcedureType.trim().toLowerCase(Locale.ROOT);
 
@@ -40,5 +44,6 @@ public class ProcedureTypeValidator {
         if (!Boolean.TRUE.equals(found.get("active"))) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, INACTIVE_TYPE);
         }
+        return found.get("label") instanceof String label && !label.isBlank() ? label.trim() : null;
     }
 }

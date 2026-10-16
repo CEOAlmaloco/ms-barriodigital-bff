@@ -8,8 +8,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -22,12 +22,35 @@ class ProcedureTypeValidatorTest {
     private final ProcedureTypeValidator validator = new ProcedureTypeValidator(catalogProxyService);
 
     @Test
-    void tipoActivoPasaAunqueVengaConEspaciosYMayusculas() {
+    void tipoActivoPasaAunqueVengaConEspaciosYMayusculasYDevuelveSuLabel() {
         when(catalogProxyService.procedures()).thenReturn(List.of(
                 Map.of("value", "bache", "label", "Bache en calle", "active", true)
         ));
 
-        assertDoesNotThrow(() -> validator.requireActive(" Bache "));
+        assertEquals("Bache en calle", validator.requireActive(" Bache "));
+    }
+
+    @Test
+    void devuelveElLabelConTildeRecortado() {
+        when(catalogProxyService.procedures()).thenReturn(List.of(
+                Map.of("value", "alumbrado", "label", "  Alumbrado público  ", "active", true)
+        ));
+
+        assertEquals("Alumbrado público", validator.requireActive("alumbrado"));
+    }
+
+    @Test
+    void tipoActivoSinLabelPasaYDevuelveNull() {
+        Map<String, Object> sinLabel = new HashMap<>();
+        sinLabel.put("value", "agua");
+        sinLabel.put("active", true);
+        when(catalogProxyService.procedures()).thenReturn(List.of(
+                sinLabel,
+                Map.of("value", "ruido", "label", "   ", "active", true)
+        ));
+
+        assertNull(validator.requireActive("agua"));
+        assertNull(validator.requireActive("ruido"));
     }
 
     @Test
@@ -64,8 +87,8 @@ class ProcedureTypeValidatorTest {
 
     @Test
     void nullOVacioNoConsultaCatalog() {
-        assertDoesNotThrow(() -> validator.requireActive(null));
-        assertDoesNotThrow(() -> validator.requireActive("   "));
+        assertNull(validator.requireActive(null));
+        assertNull(validator.requireActive("   "));
 
         verify(catalogProxyService, never()).procedures();
     }

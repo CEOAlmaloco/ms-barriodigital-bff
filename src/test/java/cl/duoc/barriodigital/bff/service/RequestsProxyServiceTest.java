@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.headerDoesNotExist;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
@@ -103,6 +104,7 @@ class RequestsProxyServiceTest {
                 .andExpect(header("X-User-Roles", "Vecino"))
                 .andExpect(header("X-User-Name", "Alex Ampuero"))
                 .andExpect(header("X-User-Email", "vecino@example.com"))
+                .andExpect(header("X-Procedure-Label", "Bache%20en%20calle"))
                 .andRespond(withStatus(HttpStatus.CREATED)
                         .contentType(MediaType.APPLICATION_JSON)
                         .body("{\"id\":\"abc\",\"status\":\"INGRESADO\"}"));
@@ -112,7 +114,31 @@ class RequestsProxyServiceTest {
                 "oid-1",
                 "Vecino",
                 "Alex Ampuero",
-                "vecino@example.com"
+                "vecino@example.com",
+                "Bache%20en%20calle"
+        );
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        server.verify();
+    }
+
+    @Test
+    void createSinLabelNoMandaElHeader() {
+        server.expect(requestTo("http://requests-test/api/requests"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("X-User-Id", "oid-1"))
+                .andExpect(headerDoesNotExist("X-Procedure-Label"))
+                .andRespond(withStatus(HttpStatus.CREATED)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"id\":\"abc\"}"));
+
+        ResponseEntity<Map<String, Object>> response = service.create(
+                Map.of("description", "Hueco", "procedureType", "bache", "address", "Calle 1"),
+                "oid-1",
+                "Vecino",
+                "Alex Ampuero",
+                "vecino@example.com",
+                null
         );
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
