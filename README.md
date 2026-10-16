@@ -87,6 +87,7 @@ El proxy de catálogo conserva los estados HTTP, pero reemplaza el cuerpo de cua
 Body de alta (sin `title`): `description`, `procedureType`, `address`.  
 El BFF manda `X-User-Id` (oid/sub del JWT) y `X-User-Roles` a requests.
 En el POST de alta manda además `X-User-Name`, leído del claim `name` del JWT y, si no viene, de `preferred_username`. El nombre no va en el body. GET, listado y cambio de estado no llevan ese header: requests solo lo necesita al crear el snapshot.  
+En ese mismo POST manda `X-User-Email`, leído del claim `email` y, si no viene, de `preferred_username`. Un email enviado en el body se ignora. Sin ninguno de los dos claims el header va vacío y requests guarda `null`.  
 Filtros `from`/`to`: fecha `yyyy-MM-dd`.
 
 Cambio de estado (EP1.5-06). Vecino/Admin/Auditor → **403** en el BFF (no llega a requests).  
