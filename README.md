@@ -101,6 +101,14 @@ curl.exe -i -X PUT http://localhost:8080/api/requests/ID/status `
   -d "{\"status\":\"ADMITIDO\"}"
 ```
 
+## Proxy a mq-admin (EP2-26)
+
+`/api/mq/**` lo reenvía el BFF a mq-admin. Cualquier método exige rol Admin: Vecino, Funcionario y Auditor reciben **403** y la llamada no sale. Sin token, **401**.
+
+Variable: `MQ_ADMIN_BASE_URL` (default `http://localhost:8084`). En el compose de apps es `http://mq-admin:8084`.
+
+El BFF arma `X-User-Roles` desde el claim `roles` del token, igual que en catalog. mq-admin no recibe el JWT. La ruta, el query string y el cuerpo se copian. Un 400, 404 o 409 de mq-admin se devuelve tal cual. Si no conecta o no responde a tiempo, el BFF responde **503** con `{status, error, message, path}`, no 502. El cliente corta a los **2 s** de conexión y **3 s** de lectura, como el de catalog.
+
 ## Arranque local sin Azure (solo desarrollo)
 
 ```powershell
@@ -229,6 +237,7 @@ La imagen no incluye secretos. Entra y la URL de requests van por env.
 | `AZURE_ISSUER_URI` | `https://login.microsoftonline.com/<tenant>/v2.0` |
 | `AZURE_AUDIENCES` | `api://a0773f3e-...` y/ o el GUID `a0773f3e-...` (coma-separados) |
 | `REQUESTS_BASE_URL` | `http://host.docker.internal:8081` (local) o `http://requests:8081` (compose) |
+| `MQ_ADMIN_BASE_URL` | `http://localhost:8084` (local) o `http://mq-admin:8084` (compose) |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:4200` |
 
 ```powershell
