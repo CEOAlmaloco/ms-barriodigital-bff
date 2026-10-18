@@ -31,6 +31,8 @@ barriodigital:
     read-timeout: ${REQUESTS_READ_TIMEOUT:3s}
   catalog:
     base-url: ${CATALOG_BASE_URL:http://localhost:8082}
+  mq-admin:
+    base-url: ${MQ_ADMIN_BASE_URL:http://localhost:8084}
 
 management:
   endpoints:
