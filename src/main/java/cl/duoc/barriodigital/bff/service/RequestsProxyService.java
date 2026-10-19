@@ -1,10 +1,12 @@
 package cl.duoc.barriodigital.bff.service;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClient.RequestBodySpec;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.List;
@@ -14,39 +16,61 @@ import java.util.Optional;
 /**
  * Proxy hacia ms-barriodigital-requests.
  * Reenvía X-User-Id / X-User-Roles tomados del JWT (nunca del body del cliente).
+ * X-User-Name, X-User-Email y X-Procedure-Label solo van en el alta: son el snapshot que requests guarda al crear.
  */
 @Service
 public class RequestsProxyService {
 
     public static final String HEADER_USER_ID = "X-User-Id";
     public static final String HEADER_USER_ROLES = "X-User-Roles";
+    public static final String HEADER_USER_NAME = "X-User-Name";
+    public static final String HEADER_USER_EMAIL = "X-User-Email";
+    /** Ya viene codificado en URL (UTF-8) desde el controller. */
+    public static final String HEADER_PROCEDURE_LABEL = "X-Procedure-Label";
 
     private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE =
             new ParameterizedTypeReference<>() {};
     private static final ParameterizedTypeReference<List<Map<String, Object>>> LIST_TYPE =
             new ParameterizedTypeReference<>() {};
+    private static final ParameterizedTypeReference<Map<String, List<String>>> TRANSITIONS_TYPE =
+            new ParameterizedTypeReference<>() {};
 
     private final RestClient requestsRestClient;
 
-    public RequestsProxyService(RestClient requestsRestClient) {
+    public RequestsProxyService(@Qualifier("requestsRestClient") RestClient requestsRestClient) {
         this.requestsRestClient = requestsRestClient;
     }
 
     public ResponseEntity<Map<String, Object>> create(
             Map<String, Object> body,
             String userId,
-            String roles
+            String roles,
+            String userName,
+            String userEmail,
+            String procedureLabel
     ) {
-        return requestsRestClient.post()
+        RequestBodySpec spec = requestsRestClient.post()
                 .uri("/api/requests")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header(HEADER_USER_ID, userId)
                 .header(HEADER_USER_ROLES, nullToEmpty(roles))
+                .header(HEADER_USER_NAME, nullToEmpty(userName))
+                .header(HEADER_USER_EMAIL, nullToEmpty(userEmail));
+        return withProcedureLabel(spec, procedureLabel)
                 .body(body)
                 .exchange((request, response) -> ResponseEntity
                         .status(response.getStatusCode())
                         .contentType(resolveContentType(response.getHeaders().getContentType()))
                         .body(response.bodyTo(MAP_TYPE)));
+    }
+
+    public ResponseEntity<Map<String, List<String>>> transitions() {
+        return requestsRestClient.get()
+                .uri("/api/requests/meta/transitions")
+                .exchange((request, response) -> ResponseEntity
+                        .status(response.getStatusCode())
+                        .contentType(resolveContentType(response.getHeaders().getContentType()))
+                        .body(response.bodyTo(TRANSITIONS_TYPE)));
     }
 
     public ResponseEntity<Map<String, Object>> getById(String id, String userId, String roles) {
@@ -82,6 +106,57 @@ public class RequestsProxyService {
                         .status(response.getStatusCode())
                         .contentType(resolveContentType(response.getHeaders().getContentType()))
                         .body(response.bodyTo(LIST_TYPE)));
+    }
+
+    /** EP1.5-06: propaga 200/400/404/409; no tapa errores de requests con 500. */
+    public ResponseEntity<Map<String, Object>> updateStatus(
+            String id,
+            Map<String, Object> body,
+            String userId,
+            String roles
+    ) {
+        return statusRequest(id, body, userId, roles)
+                .exchange((request, response) -> ResponseEntity
+                        .status(response.getStatusCode())
+                        .contentType(resolveContentType(response.getHeaders().getContentType()))
+                        .body(response.bodyTo(MAP_TYPE)));
+    }
+
+    /** Conserva el HTTP observado aunque falle después la lectura del cuerpo. */
+    public StatusChangeResult updateStatusForAdmission(
+            String id, Map<String, Object> body, String userId, String roles
+    ) {
+        return statusRequest(id, body, userId, roles).exchange((request, response) -> {
+            var status = response.getStatusCode();
+            try {
+                return new StatusChangeResult(ResponseEntity.status(status)
+                        .contentType(resolveContentType(response.getHeaders().getContentType()))
+                        .body(response.bodyTo(MAP_TYPE)), true);
+            } catch (Exception ex) {
+                // Solo la conversión de esta respuesta: no convierte un fallo de envío en rechazo.
+                return new StatusChangeResult(ResponseEntity.status(status).build(), false);
+            }
+        });
+    }
+
+    public record StatusChangeResult(ResponseEntity<Map<String, Object>> response, boolean readable) {
+    }
+
+    private RequestBodySpec statusRequest(String id, Map<String, Object> body, String userId, String roles) {
+        return requestsRestClient.put()
+                .uri("/api/requests/{id}/status", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HEADER_USER_ID, userId)
+                .header(HEADER_USER_ROLES, nullToEmpty(roles))
+                .body(body);
+    }
+
+    /** A diferencia de los otros headers, sin label no se manda vacío: se omite. */
+    private static RequestBodySpec withProcedureLabel(RequestBodySpec spec, String procedureLabel) {
+        if (procedureLabel == null || procedureLabel.isBlank()) {
+            return spec;
+        }
+        return spec.header(HEADER_PROCEDURE_LABEL, procedureLabel);
     }
 
     private static MediaType resolveContentType(MediaType contentType) {
