@@ -14,12 +14,14 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * EP1-13: solo rol Admin (hasRole). Vecino autenticado → 403.
+ * Comprueba el acceso al área Admin.
+ * La seguridad exige rol Admin: un JWT con otro rol, por ejemplo Vecino, recibe 403.
  */
 @RestController
 @RequestMapping("/api/admin")
 public class AdminController {
 
+    /** Responde que el acceso Admin está autorizado y muestra subject, roles y autoridades. */
     @GetMapping("/ping")
     public Map<String, Object> adminPing(
             @AuthenticationPrincipal Jwt jwt,

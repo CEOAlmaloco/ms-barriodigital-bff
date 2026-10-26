@@ -30,7 +30,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Orquesta trámites. Extrae oid/sub y roles del JWT y los manda a requests por header.
+ * Expone los trámites. Saca del JWT el oid o el sub, los roles y, en el alta, el nombre y el correo, y se los manda a requests por header.
+ * Requests no recibe el token.
  */
 @RestController
 @RequestMapping("/api/requests")
@@ -40,6 +41,7 @@ public class RequestsController {
     private final ProcedureTypeValidator procedureTypeValidator;
     private final RequestStatusOrchestrationService statusOrchestration;
 
+    /** Recibe el proxy de requests, el validador de tipos y la coordinación del cambio de estado. */
     public RequestsController(
             RequestsProxyService requestsProxyService,
             ProcedureTypeValidator procedureTypeValidator,
@@ -51,9 +53,8 @@ public class RequestsController {
     }
 
     /**
-     * El tipo se valida contra catalog antes de llamar a requests.
-     * 400 si no existe o está inactivo, 503 si catalog no responde. En esos casos requests no se llama.
-     * El label del tipo viaja en X-Procedure-Label para el snapshot. Sin label en catalog no se manda.
+     * Crea un trámite después de consultar catalog: 400 si el tipo no existe o está inactivo, 503 si catalog no responde, y en esos casos requests no se llama.
+     * El label viaja en {@code X-Procedure-Label} para el snapshot; si catalog no trae label, no se manda.
      */
     @PostMapping
     public ResponseEntity<Map<String, Object>> create(
@@ -77,8 +78,8 @@ public class RequestsController {
     }
 
     /**
-     * Un header no lleva tildes de forma segura, así que el label va codificado en URL (UTF-8).
-     * UriUtils codifica el espacio como %20 y el + como %2B; requests lo lee con URLDecoder.
+     * Codifica el label en URL (UTF-8) porque un header no transporta tildes de forma segura.
+     * El espacio queda como %20 y el + como %2B; requests lo lee con URLDecoder.
      */
     static String encodeProcedureLabel(String label) {
         if (label == null || label.isBlank()) {
@@ -87,11 +88,13 @@ public class RequestsController {
         return UriUtils.encode(label, StandardCharsets.UTF_8);
     }
 
+    /** Devuelve los cambios de estado permitidos. */
     @GetMapping("/meta/transitions")
     public ResponseEntity<Map<String, List<String>>> transitions() {
         return requestsProxyService.transitions();
     }
 
+    /** Devuelve un trámite. El id de usuario y los roles salen del JWT. */
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getById(
             @PathVariable String id,
@@ -100,6 +103,7 @@ public class RequestsController {
         return requestsProxyService.getById(id, resolveUserId(jwt), resolveRoles(jwt));
     }
 
+    /** Lista trámites. Puede filtrar por estado y por fechas. El id de usuario y los roles salen del JWT. */
     @GetMapping
     public ResponseEntity<List<Map<String, Object>>> list(
             @RequestParam(required = false) String status,
@@ -111,8 +115,8 @@ public class RequestsController {
     }
 
     /**
-     * EP1.5-06. 403 de no-Funcionario lo corta AzureSecurityConfig (no llega acá).
-     * EP1.5-18: el servicio coordina cupo solo para ADMITIDO.
+     * Cambia el estado. Fuera del perfil dev, el 403 de quien no tiene rol Funcionario lo corta la seguridad y no llega aquí.
+     * Si el destino es ADMITIDO, la coordinación reserva el cupo en catalog antes de guardar el cambio.
      */
     @PutMapping("/{id}/status")
     public ResponseEntity<Map<String, Object>> updateStatus(
@@ -133,8 +137,8 @@ public class RequestsController {
     }
 
     /**
-     * Preferir oid de Entra; si no viene, usar sub.
-     * En perfil dev sin JWT usa un usuario de prueba.
+     * Saca el id de la persona: prefiere el claim oid de Entra y, si no viene, sub.
+     * Sin JWT, en perfil dev, usa un usuario de prueba. Si el JWT no trae oid ni sub, responde 401.
      */
     static String resolveUserId(Jwt jwt) {
         if (jwt == null) {
@@ -153,7 +157,7 @@ public class RequestsController {
 
     /**
      * Nombre para el snapshot del alta. Primero el claim name; si no viene, preferred_username.
-     * En perfil dev sin JWT usa el mismo usuario de prueba que el id.
+     * En perfil dev, sin JWT, usa el mismo usuario de prueba que el id.
      */
     static String resolveUserName(Jwt jwt) {
         if (jwt == null) {
@@ -168,8 +172,8 @@ public class RequestsController {
     }
 
     /**
-     * Email para el snapshot del alta. Primero el claim email; en tokens v2 de Entra a menudo no viene,
-     * y entonces se usa preferred_username. No se lee del body. Sin JWT el header viaja vacío.
+     * Correo para el snapshot del alta: primero el claim email y, si no viene, preferred_username. En tokens v2 de Entra el email a menudo no viene.
+     * No se lee del body y, sin JWT, el header viaja vacío.
      */
     static String resolveUserEmail(Jwt jwt) {
         if (jwt == null) {
@@ -183,7 +187,7 @@ public class RequestsController {
         return preferred == null ? "" : preferred;
     }
 
-    /** Recorta y descarta un valor vacío o con salto de línea, que no puede ir en un header. */
+    /** Recorta el claim y descarta un valor vacío o con salto de línea, porque eso no puede ir en un header. */
     private static String readableClaim(String raw) {
         if (raw == null) {
             return null;
@@ -195,6 +199,7 @@ public class RequestsController {
         return value;
     }
 
+    /** Junta los roles del claim {@code roles} separados por comas. Sin JWT, en perfil dev, usa Vecino. */
     static String resolveRoles(Jwt jwt) {
         if (jwt == null) {
             return "Vecino";

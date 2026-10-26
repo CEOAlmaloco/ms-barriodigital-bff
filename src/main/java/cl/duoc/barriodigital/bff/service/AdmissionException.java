@@ -3,9 +3,13 @@ package cl.duoc.barriodigital.bff.service;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
-/** Errores públicos de la coordinación; los mensajes no contienen detalles internos. */
+/**
+ * Errores públicos de la admisión.
+ * Cada código trae un status HTTP y un mensaje que se puede mostrar, sin detalles internos.
+ */
 public class AdmissionException extends ResponseStatusException {
 
+    /** Cupo agotado, tipo no disponible o una respuesta de catalog o requests que no se pudo confirmar. */
     public enum Code {
         QUOTA_EXHAUSTED(HttpStatus.CONFLICT, "No queda cupo disponible para este tipo de trámite."),
         PROCEDURE_TYPE_UNAVAILABLE(HttpStatus.CONFLICT,
@@ -26,6 +30,7 @@ public class AdmissionException extends ResponseStatusException {
         private final HttpStatus status;
         private final String message;
 
+        /** Guarda el status HTTP y el mensaje de ese caso. */
         Code(HttpStatus status, String message) {
             this.status = status;
             this.message = message;
@@ -34,11 +39,13 @@ public class AdmissionException extends ResponseStatusException {
 
     private final Code code;
 
+    /** Crea el error con el status y el mensaje del código. */
     public AdmissionException(Code code) {
         super(code.status, code.message);
         this.code = code;
     }
 
+    /** Devuelve el nombre del código para incluirlo en el JSON. */
     public String code() {
         return code.name();
     }

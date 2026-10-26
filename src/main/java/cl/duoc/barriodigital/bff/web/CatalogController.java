@@ -14,8 +14,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 /**
- * Catálogo vía ms-barriodigital-catalog (EP1.5-13).
- * El JWT se valida acá. POST y PUT además exigen Admin antes de llamar al dominio.
+ * Expone el catálogo: el JWT se valida en el BFF y catalog no lo recibe.
+ * GET lista los tipos para cualquier rol autenticado; POST y PUT exigen rol Admin y reenvían ese rol en {@code X-User-Roles}.
  */
 @RestController
 @RequestMapping("/api/catalog")
@@ -23,15 +23,18 @@ public class CatalogController {
 
     private final CatalogProxyService catalogProxyService;
 
+    /** Recibe el proxy hacia catalog. */
     public CatalogController(CatalogProxyService catalogProxyService) {
         this.catalogProxyService = catalogProxyService;
     }
 
+    /** Lista los tipos de trámite. */
     @GetMapping("/procedures")
     public ResponseEntity<Object> procedures() {
         return catalogProxyService.list();
     }
 
+    /** Crea un tipo. El rol sale del JWT ya validado. */
     @PostMapping("/procedures")
     public ResponseEntity<Map<String, Object>> create(
             @RequestBody Map<String, Object> body,
@@ -40,6 +43,7 @@ public class CatalogController {
         return catalogProxyService.create(body, CatalogCaller.rolesHeader(authentication));
     }
 
+    /** Edita un tipo. El código va en la URL y el rol sale del JWT. */
     @PutMapping("/procedures/{value}")
     public ResponseEntity<Map<String, Object>> update(
             @PathVariable String value,

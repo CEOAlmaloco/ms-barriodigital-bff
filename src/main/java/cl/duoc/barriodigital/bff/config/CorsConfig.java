@@ -11,12 +11,13 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * EP1-16: Angular en http://localhost:4200 puede llamar al BFF sin error de CORS.
- * No se usa origen "*" porque se envían credenciales / Authorization.
+ * Permite que el navegador, por defecto en http://localhost:4200, llame al BFF.
+ * No se usa el origen "*" porque la petición lleva credenciales y el header Authorization.
  */
 @Configuration
 public class CorsConfig {
 
+    /** Define orígenes, métodos y headers permitidos, incluida Authorization. */
     @Bean
     CorsConfigurationSource corsConfigurationSource(
             @Value("${barriodigital.cors.allowed-origins:http://localhost:4200}") String allowedOrigins) {
@@ -34,6 +35,7 @@ public class CorsConfig {
         return source;
     }
 
+    /** Parte la lista de orígenes separada por comas y descarta los vacíos. */
     private static List<String> splitCsv(String csv) {
         return Arrays.stream(csv.split(","))
                 .map(String::trim)

@@ -14,9 +14,8 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Proxy hacia ms-barriodigital-requests.
- * Reenvía X-User-Id / X-User-Roles tomados del JWT (nunca del body del cliente).
- * X-User-Name, X-User-Email y X-Procedure-Label solo van en el alta: son el snapshot que requests guarda al crear.
+ * Reenvía los trámites a requests.
+ * Manda {@code X-User-Id} y {@code X-User-Roles} tomados del JWT, nunca del body. {@code X-User-Name}, {@code X-User-Email} y {@code X-Procedure-Label} solo van en el alta, como snapshot que requests guarda al crear.
  */
 @Service
 public class RequestsProxyService {
@@ -37,10 +36,12 @@ public class RequestsProxyService {
 
     private final RestClient requestsRestClient;
 
+    /** Recibe el cliente HTTP de requests. */
     public RequestsProxyService(@Qualifier("requestsRestClient") RestClient requestsRestClient) {
         this.requestsRestClient = requestsRestClient;
     }
 
+    /** Crea el trámite y manda también nombre, correo y, si viene, el label del tipo. */
     public ResponseEntity<Map<String, Object>> create(
             Map<String, Object> body,
             String userId,
@@ -64,6 +65,7 @@ public class RequestsProxyService {
                         .body(response.bodyTo(MAP_TYPE)));
     }
 
+    /** Pide los cambios de estado permitidos. */
     public ResponseEntity<Map<String, List<String>>> transitions() {
         return requestsRestClient.get()
                 .uri("/api/requests/meta/transitions")
@@ -73,6 +75,7 @@ public class RequestsProxyService {
                         .body(response.bodyTo(TRANSITIONS_TYPE)));
     }
 
+    /** Pide un trámite por su id, con el usuario y los roles en headers. */
     public ResponseEntity<Map<String, Object>> getById(String id, String userId, String roles) {
         return requestsRestClient.get()
                 .uri("/api/requests/{id}", id)
@@ -84,6 +87,7 @@ public class RequestsProxyService {
                         .body(response.bodyTo(MAP_TYPE)));
     }
 
+    /** Pide el listado. Si vienen estado o fechas, los manda como query. */
     public ResponseEntity<List<Map<String, Object>>> list(
             String status,
             String from,
@@ -108,7 +112,10 @@ public class RequestsProxyService {
                         .body(response.bodyTo(LIST_TYPE)));
     }
 
-    /** EP1.5-06: propaga 200/400/404/409; no tapa errores de requests con 500. */
+    /**
+     * Cambia el estado y devuelve el mismo status que respondió requests, por ejemplo 200, 400, 404 o 409.
+     * No convierte un error de requests en 500.
+     */
     public ResponseEntity<Map<String, Object>> updateStatus(
             String id,
             Map<String, Object> body,
@@ -122,7 +129,10 @@ public class RequestsProxyService {
                         .body(response.bodyTo(MAP_TYPE)));
     }
 
-    /** Conserva el HTTP observado aunque falle después la lectura del cuerpo. */
+    /**
+     * Igual que el cambio de estado, pero indica si el cuerpo se pudo leer.
+     * Conserva el status HTTP aunque falle la lectura, para que la admisión sepa si el trámite quedó guardado.
+     */
     public StatusChangeResult updateStatusForAdmission(
             String id, Map<String, Object> body, String userId, String roles
     ) {
@@ -139,9 +149,11 @@ public class RequestsProxyService {
         });
     }
 
+    /** La respuesta del cambio de estado y si su cuerpo se pudo leer. */
     public record StatusChangeResult(ResponseEntity<Map<String, Object>> response, boolean readable) {
     }
 
+    /** Arma el PUT de cambio de estado con {@code X-User-Id} y {@code X-User-Roles}. */
     private RequestBodySpec statusRequest(String id, Map<String, Object> body, String userId, String roles) {
         return requestsRestClient.put()
                 .uri("/api/requests/{id}/status", id)
@@ -151,7 +163,7 @@ public class RequestsProxyService {
                 .body(body);
     }
 
-    /** A diferencia de los otros headers, sin label no se manda vacío: se omite. */
+    /** Agrega {@code X-Procedure-Label} solo si viene. Si no, omite el header en lugar de mandarlo vacío. */
     private static RequestBodySpec withProcedureLabel(RequestBodySpec spec, String procedureLabel) {
         if (procedureLabel == null || procedureLabel.isBlank()) {
             return spec;
@@ -159,10 +171,12 @@ public class RequestsProxyService {
         return spec.header(HEADER_PROCEDURE_LABEL, procedureLabel);
     }
 
+    /** Si la respuesta no indica el tipo, asume JSON. */
     private static MediaType resolveContentType(MediaType contentType) {
         return contentType != null ? contentType : MediaType.APPLICATION_JSON;
     }
 
+    /** Convierte un texto vacío en null para no mandar un filtro en blanco. */
     private static String blankToNull(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -170,6 +184,7 @@ public class RequestsProxyService {
         return value;
     }
 
+    /** Convierte null en texto vacío para que el header siempre exista. */
     private static String nullToEmpty(String value) {
         return value == null ? "" : value;
     }

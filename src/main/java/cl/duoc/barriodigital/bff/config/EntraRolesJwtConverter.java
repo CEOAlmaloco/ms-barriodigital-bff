@@ -16,16 +16,19 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * EP1-13: claim {@code roles} de Entra App Roles → {@code ROLE_Admin}, {@code ROLE_Vecino}, etc.
+ * Lee el claim {@code roles} del JWT de Entra y lo convierte en autoridades {@code ROLE_*}, por ejemplo {@code ROLE_Admin} o {@code ROLE_Vecino}.
+ * Spring Security usa esos roles para responder 403 cuando la ruta pide Admin o Funcionario.
  */
 final class EntraRolesJwtConverter implements Converter<Jwt, AbstractAuthenticationToken> {
 
     private final JwtAuthenticationConverter delegate = new JwtAuthenticationConverter();
 
+    /** Usa {@link #extractRoles} como lector de autoridades del JWT. */
     EntraRolesJwtConverter() {
         delegate.setJwtGrantedAuthoritiesConverter(EntraRolesJwtConverter::extractRoles);
     }
 
+    /** Convierte el JWT en autenticación. Si el conversor no devuelve nada, deja una identidad sin roles. */
     @Override
     public AbstractAuthenticationToken convert(Jwt jwt) {
         AbstractAuthenticationToken token = delegate.convert(jwt);
@@ -35,6 +38,7 @@ final class EntraRolesJwtConverter implements Converter<Jwt, AbstractAuthenticat
         return token;
     }
 
+    /** Junta {@code roles} y, si viene, {@code role}; antepone {@code ROLE_} cuando falta. */
     static Collection<GrantedAuthority> extractRoles(Jwt jwt) {
         Set<String> roleNames = new HashSet<>();
 

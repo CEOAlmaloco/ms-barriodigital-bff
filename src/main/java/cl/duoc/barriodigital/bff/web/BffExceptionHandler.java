@@ -12,13 +12,13 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Errores propios del BFF (ResponseStatusException) con la misma forma que SecurityJsonErrors:
- * {@code {status, error, message, path}}. Sin esto Spring deja message fuera del cuerpo.
- * El 400 de @Valid no pasa por acá y queda como siempre.
+ * Traduce los {@code ResponseStatusException} del BFF a JSON con status, error, message y path, la misma forma que SecurityJsonErrors.
+ * Si el error es una admisión, incluye su código. Sin este manejador Spring deja message fuera del cuerpo, y el 400 de {@code @Valid} no pasa por aquí.
  */
 @RestControllerAdvice
 public class BffExceptionHandler {
 
+    /** Arma ese JSON a partir de la excepción y la ruta. */
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, Object>> status(ResponseStatusException ex, HttpServletRequest request) {
         int status = ex.getStatusCode().value();
@@ -33,6 +33,7 @@ public class BffExceptionHandler {
         return ResponseEntity.status(status).body(body);
     }
 
+    /** Convierte el status HTTP en su frase, por ejemplo Not Found. */
     private static String errorName(int status) {
         HttpStatus resolved = HttpStatus.resolve(status);
         return resolved != null ? resolved.getReasonPhrase() : "Error";
