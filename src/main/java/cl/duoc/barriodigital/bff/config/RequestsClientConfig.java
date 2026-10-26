@@ -9,9 +9,14 @@ import org.springframework.web.client.RestClient;
 import java.net.http.HttpClient;
 import java.time.Duration;
 
+/**
+ * Cliente HTTP hacia requests.
+ * Toma la URL base y los timeouts de conexión y lectura para que el BFF no espere sin límite.
+ */
 @Configuration
 public class RequestsClientConfig {
 
+    /** Crea el RestClient de requests con la URL y los timeouts configurados. */
     @Bean
     RestClient requestsRestClient(
             @Value("${barriodigital.requests.base-url}") String baseUrl,

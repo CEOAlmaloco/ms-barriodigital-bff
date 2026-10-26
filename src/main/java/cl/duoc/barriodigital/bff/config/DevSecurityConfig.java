@@ -9,15 +9,15 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * Perfil local para levantar el BFF sin Azure AD.
+ * Perfil dev para levantar el BFF sin Azure AD: cualquier petición pasa sin JWT y no aplica fuera de ese perfil.
+ * CORS lo define {@link CorsConfig}.
  * Arranque: mvnw spring-boot:run -Dspring-boot.run.profiles=dev
- *
- * CORS: ver {@link CorsConfig} (EP1-16).
  */
 @Configuration
 @Profile("dev")
 public class DevSecurityConfig {
 
+    /** Cadena local sin sesión ni CSRF, con CORS y con todas las rutas permitidas. */
     @Bean
     SecurityFilterChain devSecurityFilterChain(HttpSecurity http) throws Exception {
         http

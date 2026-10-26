@@ -18,8 +18,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Proxy hacia ms-barriodigital-catalog (EP1.5-13).
- * Reenvía status y body: 400/403/404/409 del dominio no se convierten en 500.
+ * Reenvía a catalog el listado, el alta y la edición de tipos, y también la reserva y la devolución de cupo.
+ * Propaga status y body: un 400, 403, 404 o 409 del dominio no se convierte en 500, y un 5xx no muestra el error interno.
  */
 @Service
 public class CatalogProxyService {
@@ -38,17 +38,19 @@ public class CatalogProxyService {
 
     private final RestClient catalogRestClient;
 
+    /** Recibe el cliente HTTP de catalog. */
     public CatalogProxyService(@Qualifier("catalogRestClient") RestClient catalogRestClient) {
         this.catalogRestClient = catalogRestClient;
     }
 
+    /** Pide la lista de tipos y la devuelve al cliente. */
     public ResponseEntity<Object> list() {
         return exchangeJson(catalogRestClient.get().uri("/api/catalog/procedures"));
     }
 
     /**
-     * Tipos de trámite para validar el alta de requests. No reenvía nada al cliente:
-     * sin conexión, timeout, status no 2xx o cuerpo ilegible, responde 503.
+     * Pide los tipos para validar el alta. No reenvía el body al cliente.
+     * Sin conexión, timeout, status distinto de 2xx o cuerpo ilegible, responde 503.
      */
     public List<Map<String, Object>> procedures() {
         List<Map<String, Object>> procedures;
@@ -67,6 +69,7 @@ public class CatalogProxyService {
         return procedures;
     }
 
+    /** Crea un tipo y manda el rol en {@code X-User-Roles}. */
     public ResponseEntity<Map<String, Object>> create(Map<String, Object> body, String rolesHeader) {
         RequestBodySpec spec = catalogRestClient.post()
                 .uri("/api/catalog/procedures")
@@ -74,6 +77,7 @@ public class CatalogProxyService {
         return exchangeMap(withRoles(spec, rolesHeader).body(body));
     }
 
+    /** Edita un tipo y manda el rol en {@code X-User-Roles}. */
     public ResponseEntity<Map<String, Object>> update(String value, Map<String, Object> body, String rolesHeader) {
         RequestBodySpec spec = catalogRestClient.put()
                 .uri("/api/catalog/procedures/{value}", value)
@@ -81,19 +85,21 @@ public class CatalogProxyService {
         return exchangeMap(withRoles(spec, rolesHeader).body(body));
     }
 
-    /** El 200 confirma la operación; no necesitamos deserializar su recurso. Sin reintentos. */
+    /** Reserva un cupo. Solo usa el status HTTP, sin reintentos. */
     public HttpStatusCode reserve(String value) {
         return catalogRestClient.post()
                 .uri("/api/catalog/procedures/{value}/reserve", value)
                 .exchange((request, response) -> response.getStatusCode());
     }
 
+    /** Devuelve un cupo. Solo usa el status HTTP, sin reintentos. */
     public HttpStatusCode release(String value) {
         return catalogRestClient.post()
                 .uri("/api/catalog/procedures/{value}/release", value)
                 .exchange((request, response) -> response.getStatusCode());
     }
 
+    /** Agrega {@code X-User-Roles} si viene un rol. */
     private static RequestBodySpec withRoles(RequestBodySpec spec, String rolesHeader) {
         if (rolesHeader == null || rolesHeader.isBlank()) {
             return spec;
@@ -101,6 +107,7 @@ public class CatalogProxyService {
         return spec.header(CatalogCaller.HEADER_USER_ROLES, rolesHeader);
     }
 
+    /** Lee la respuesta de un tipo. Un 5xx se reemplaza por un mensaje genérico. */
     private ResponseEntity<Map<String, Object>> exchangeMap(RequestHeadersSpec<?> spec) {
         return spec.exchange((request, response) -> {
             if (response.getStatusCode().is5xxServerError()) {
@@ -115,7 +122,7 @@ public class CatalogProxyService {
         });
     }
 
-    /** Un 200 es una lista. Los errores 5xx nunca reenvían detalles internos del servicio. */
+    /** Lee el listado: un 200 es la lista y un 5xx no reenvía detalles internos de catalog. */
     private ResponseEntity<Object> exchangeJson(RequestHeadersSpec<?> spec) {
         return spec.exchange((request, response) -> {
             if (response.getStatusCode().is5xxServerError()) {
@@ -130,6 +137,7 @@ public class CatalogProxyService {
         });
     }
 
+    /** Arma el JSON genérico de un fallo interno. */
     private static Map<String, Object> serverError(HttpStatusCode status) {
         HttpStatus resolved = HttpStatus.resolve(status.value());
         return Map.of(
@@ -139,6 +147,7 @@ public class CatalogProxyService {
         );
     }
 
+    /** Si catalog no indica el tipo de contenido, asume JSON. */
     private static MediaType resolveContentType(MediaType contentType) {
         return contentType != null ? contentType : MediaType.APPLICATION_JSON;
     }

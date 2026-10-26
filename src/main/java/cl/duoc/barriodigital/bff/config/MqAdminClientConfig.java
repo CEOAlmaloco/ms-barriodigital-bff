@@ -9,12 +9,13 @@ import org.springframework.web.client.RestClient;
 import java.net.http.HttpClient;
 
 /**
- * Cliente hacia mq-admin. Mismos timeouts que {@link CatalogClientConfig}:
- * si no conecta o no responde, el proxy corta y el BFF responde 503.
+ * Cliente HTTP hacia mq-admin.
+ * Usa los mismos timeouts que {@link CatalogClientConfig}: si no conecta o no responde, el proxy corta y el BFF responde 503.
  */
 @Configuration
 public class MqAdminClientConfig {
 
+    /** Crea el RestClient con la URL de mq-admin y esos timeouts. */
     @Bean
     RestClient mqAdminRestClient(@Value("${barriodigital.mq-admin.base-url}") String baseUrl) {
         HttpClient httpClient = HttpClient.newBuilder()

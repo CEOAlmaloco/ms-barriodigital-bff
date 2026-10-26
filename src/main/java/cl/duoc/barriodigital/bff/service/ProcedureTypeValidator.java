@@ -10,8 +10,8 @@ import java.util.Map;
 
 /**
  * Antes del alta, revisa en catalog que el procedureType exista y esté activo.
- * Normaliza igual que requests (trim y minúsculas). El body que se reenvía no se toca.
- * Vacío o null no consulta catalog: el @NotBlank del DTO ya lo corta con 400.
+ * Normaliza igual que requests, con trim y minúsculas; el body que se reenvía no se toca.
+ * Si el código viene vacío no consulta catalog: el {@code @NotBlank} del DTO ya responde 400.
  */
 @Component
 public class ProcedureTypeValidator {
@@ -21,13 +21,14 @@ public class ProcedureTypeValidator {
 
     private final CatalogProxyService catalogProxyService;
 
+    /** Recibe el proxy de catalog. */
     public ProcedureTypeValidator(CatalogProxyService catalogProxyService) {
         this.catalogProxyService = catalogProxyService;
     }
 
     /**
-     * Devuelve el label del tipo encontrado, recortado, para el snapshot de requests.
-     * Null si el item de catalog no trae label (o viene vacío) y si el código viene vacío.
+     * Busca el tipo y devuelve su label recortado, para el snapshot que requests guarda.
+     * Si no existe o no está activo, responde 400. Si catalog no trae label, o el código viene vacío, devuelve null.
      */
     public String requireActive(String rawProcedureType) {
         if (rawProcedureType == null || rawProcedureType.isBlank()) {

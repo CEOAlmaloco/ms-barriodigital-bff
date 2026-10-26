@@ -19,9 +19,8 @@ import org.springframework.web.server.ResponseStatusException;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Proxy hacia ms-barriodigital-mq-admin (EP2-26).
- * Reenvía método, ruta, query y cuerpo. El JWT no sale: solo {@code X-User-Roles}.
- * Si mq-admin no conecta o no responde, lanza 503 para que lo escriba {@code BffExceptionHandler}.
+ * Reenvía la administración de colas a mq-admin: método, ruta, query y cuerpo.
+ * El JWT no sale del BFF; solo se manda {@code X-User-Roles}. Si mq-admin no conecta o no responde, responde 503 para que lo escriba el manejador de errores.
  */
 @Service
 public class MqAdminProxyService {
@@ -33,10 +32,12 @@ public class MqAdminProxyService {
 
     private final RestClient mqAdminRestClient;
 
+    /** Recibe el cliente HTTP de mq-admin. */
     public MqAdminProxyService(@Qualifier("mqAdminRestClient") RestClient mqAdminRestClient) {
         this.mqAdminRestClient = mqAdminRestClient;
     }
 
+    /** Reenvía la petición y devuelve la respuesta. Un corte de red se vuelve 503. */
     public ResponseEntity<byte[]> forward(HttpServletRequest request, byte[] body, String rolesHeader) {
         HttpMethod method = HttpMethod.valueOf(request.getMethod());
         try {
@@ -56,6 +57,7 @@ public class MqAdminProxyService {
         }
     }
 
+    /** Copia {@code X-User-Roles} y el Content-Type. No copia el header Authorization. */
     private static void copyHeaders(HttpHeaders headers, HttpServletRequest request, String rolesHeader) {
         if (rolesHeader != null && !rolesHeader.isBlank()) {
             headers.set(CatalogCaller.HEADER_USER_ROLES, rolesHeader);
@@ -65,10 +67,12 @@ public class MqAdminProxyService {
         }
     }
 
+    /** Indica si hay cuerpo para reenviar. */
     private static boolean hasBody(byte[] body) {
         return body != null && body.length > 0;
     }
 
+    /** Arma la respuesta. Si mq-admin responde 5xx, reemplaza el cuerpo por un mensaje genérico. */
     private ResponseEntity<byte[]> toResponse(RestClient.RequestHeadersSpec.ConvertibleClientHttpResponse response)
             throws java.io.IOException {
         HttpStatusCode status = response.getStatusCode();
@@ -89,6 +93,7 @@ public class MqAdminProxyService {
         return builder.body(payload);
     }
 
+    /** JSON corto para no mostrar un error interno de mq-admin. */
     private static byte[] genericError(HttpStatusCode status) {
         HttpStatus resolved = HttpStatus.resolve(status.value());
         String error = resolved == null ? "Server Error" : resolved.getReasonPhrase();

@@ -22,12 +22,14 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * EP1-12: issuer (vía issuer-uri + JWKS), exp (default), audience del contrato.
+ * Valida el JWT antes de aceptarlo, fuera del perfil dev.
+ * Comprueba el emisor con issuer-uri y JWKS, la expiración y que el claim {@code aud} coincida con un audience configurado.
  */
 @Configuration
 @Profile("!dev")
 public class JwtValidationConfig {
 
+    /** Arma el decoder con el validador de issuer y el de audience. */
     @Bean
     @ConditionalOnProperty(name = "barriodigital.security.jwt.entra-decoder", havingValue = "true", matchIfMissing = true)
     JwtDecoder jwtDecoder(
@@ -43,6 +45,7 @@ public class JwtValidationConfig {
         return decoder;
     }
 
+    /** Parte la lista de audiences permitidos, separados por comas. */
     private static Set<String> parseAudiences(String csv) {
         Set<String> audiences = new HashSet<>();
         if (csv == null || csv.isBlank()) {
@@ -56,16 +59,19 @@ public class JwtValidationConfig {
     }
 
     /**
-     * El token debe traer al menos uno de los audiences esperados en el claim {@code aud}.
+     * Exige que el JWT traiga al menos uno de los audiences esperados en el claim {@code aud}.
+     * Si la lista configurada está vacía, no exige audience.
      */
     static final class AudienceValidator implements OAuth2TokenValidator<Jwt> {
 
         private final Set<String> allowed;
 
+        /** Guarda los audiences permitidos. */
         AudienceValidator(Set<String> allowed) {
             this.allowed = allowed;
         }
 
+        /** Acepta el JWT si hay coincidencia. Si no, lo rechaza. */
         @Override
         public OAuth2TokenValidatorResult validate(Jwt jwt) {
             if (allowed.isEmpty()) {

@@ -10,18 +10,20 @@ import org.springframework.web.bind.annotation.RestController;
 import java.io.IOException;
 
 /**
- * Administración de colas vía ms-barriodigital-mq-admin (EP2-26).
- * El JWT se valida acá y solo Admin pasa. mq-admin recibe {@code X-User-Roles}, nunca el token.
+ * Expone la administración de colas. El JWT se valida en el BFF y solo el rol Admin pasa.
+ * mq-admin recibe {@code X-User-Roles}, nunca el token.
  */
 @RestController
 public class MqAdminController {
 
     private final MqAdminProxyService mqAdminProxyService;
 
+    /** Recibe el proxy hacia mq-admin. */
     public MqAdminController(MqAdminProxyService mqAdminProxyService) {
         this.mqAdminProxyService = mqAdminProxyService;
     }
 
+    /** Reenvía cualquier petición bajo {@code /api/mq}, con el rol sacado del JWT. */
     @RequestMapping("/api/mq/**")
     public ResponseEntity<byte[]> proxy(HttpServletRequest request, Authentication authentication) throws IOException {
         byte[] body = request.getInputStream().readAllBytes();

@@ -9,10 +9,15 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * Comprueba que el BFF responde.
+ * Si hay JWT, incluye el subject y los roles; en perfil dev, sin JWT, lo indica en la respuesta.
+ */
 @RestController
 @RequestMapping("/api")
 public class PingController {
 
+    /** Responde que el BFF está arriba. */
     @GetMapping("/ping")
     public Map<String, Object> ping(@AuthenticationPrincipal Jwt jwt) {
         Map<String, Object> body = new LinkedHashMap<>();

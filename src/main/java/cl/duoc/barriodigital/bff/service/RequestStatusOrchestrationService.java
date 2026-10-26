@@ -14,7 +14,10 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.UUID;
 
-/** Coordinación síncrona sin transacción distribuida, reintentos ni recuperación durable. */
+/**
+ * Coordina el cambio de estado: si el destino es ADMITIDO, reserva cupo en catalog y después pide el cambio a requests; si requests lo rechaza, intenta devolver el cupo.
+ * Los demás estados se reenvían directo, sin cupo. Es síncrona, sin transacción distribuida, reintentos ni recuperación durable.
+ */
 @Service
 public class RequestStatusOrchestrationService {
 
@@ -22,11 +25,16 @@ public class RequestStatusOrchestrationService {
     private final RequestsProxyService requests;
     private final CatalogProxyService catalog;
 
+    /** Recibe el proxy de requests y el de catalog. */
     public RequestStatusOrchestrationService(RequestsProxyService requests, CatalogProxyService catalog) {
         this.requests = requests;
         this.catalog = catalog;
     }
 
+    /**
+     * Cambia el estado. Si no es ADMITIDO, solo reenvía a requests.
+     * Si es ADMITIDO, exige rol Funcionario y un usuario (403 y 401 si faltan), reserva el cupo y guarda el cambio.
+     */
     public ResponseEntity<Map<String, Object>> updateStatus(
             String id, Map<String, Object> payload, String userId, String roles
     ) {
@@ -122,6 +130,7 @@ public class RequestStatusOrchestrationService {
         return response;
     }
 
+    /** Reconoce un rechazo esperado de requests (400, 403, 404 o 409) para saber que este intento no se guardó. */
     private static boolean recognizedRejection(ResponseEntity<Map<String, Object>> response, String path) {
         Map<String, Object> body = response.getBody();
         int status = response.getStatusCode().value();
@@ -143,6 +152,7 @@ public class RequestStatusOrchestrationService {
         };
     }
 
+    /** Registra el fallo y lo convierte en un error público, sin detalles internos. */
     private static AdmissionException failure(
             Code code, String phase, String attempt, String id, String type, Integer httpStatus
     ) {
@@ -152,6 +162,7 @@ public class RequestStatusOrchestrationService {
         return new AdmissionException(code);
     }
 
+    /** Sustituye saltos de línea del id para que no alteren el log. */
     private static String safeId(String id) {
         return id.replaceAll("[\\r\\n\\t]", "_");
     }
