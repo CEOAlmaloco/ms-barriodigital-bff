@@ -37,6 +37,8 @@ public class AzureSecurityConfig {
                                                 .requestMatchers("/api/mq/**").hasRole("Admin")
                                                 .requestMatchers(HttpMethod.PUT, "/api/requests/{id}/status")
                                                 .hasRole("Funcionario")
+                                                .requestMatchers(HttpMethod.POST, "/api/requests/{id}/gestiones")
+                                                .hasRole("Funcionario")
                                                 .anyRequest().authenticated())
                                 .oauth2ResourceServer(oauth2 -> oauth2
                                                 .jwt(jwt -> jwt.jwtAuthenticationConverter(

@@ -153,14 +153,91 @@ public class RequestsProxyService {
     public record StatusChangeResult(ResponseEntity<Map<String, Object>> response, boolean readable) {
     }
 
-    /** Arma el PUT de cambio de estado con {@code X-User-Id} y {@code X-User-Roles}. */
-    private RequestBodySpec statusRequest(String id, Map<String, Object> body, String userId, String roles) {
-        return requestsRestClient.put()
-                .uri("/api/requests/{id}/status", id)
+    /**
+     * Cambia el estado y, si viene el nombre, lo manda para el historial.
+     * El nombre vacío no se envía: requests usa el id como respaldo.
+     */
+    public ResponseEntity<Map<String, Object>> updateStatus(
+            String id,
+            Map<String, Object> body,
+            String userId,
+            String roles,
+            String userName
+    ) {
+        return statusRequest(id, body, userId, roles, userName)
+                .exchange((request, response) -> ResponseEntity
+                        .status(response.getStatusCode())
+                        .contentType(resolveContentType(response.getHeaders().getContentType()))
+                        .body(response.bodyTo(MAP_TYPE)));
+    }
+
+    /** Igual que {@link #updateStatusForAdmission(String, Map, String, String)} y agrega el nombre si viene. */
+    public StatusChangeResult updateStatusForAdmission(
+            String id, Map<String, Object> body, String userId, String roles, String userName
+    ) {
+        return statusRequest(id, body, userId, roles, userName).exchange((request, response) -> {
+            var status = response.getStatusCode();
+            try {
+                return new StatusChangeResult(ResponseEntity.status(status)
+                        .contentType(resolveContentType(response.getHeaders().getContentType()))
+                        .body(response.bodyTo(MAP_TYPE)), true);
+            } catch (Exception ex) {
+                return new StatusChangeResult(ResponseEntity.status(status).build(), false);
+            }
+        });
+    }
+
+    /** Historial del trámite. El vecino y el personal no ven lo mismo: lo recorta requests. */
+    public ResponseEntity<Map<String, Object>> actividad(String id, String userId, String roles) {
+        return requestsRestClient.get()
+                .uri("/api/requests/{id}/actividad", id)
+                .header(HEADER_USER_ID, userId)
+                .header(HEADER_USER_ROLES, nullToEmpty(roles))
+                .exchange((request, response) -> ResponseEntity
+                        .status(response.getStatusCode())
+                        .contentType(resolveContentType(response.getHeaders().getContentType()))
+                        .body(response.bodyTo(MAP_TYPE)));
+    }
+
+    /** Registra una gestión. El nombre del funcionario va en header, no en el body. */
+    public ResponseEntity<Map<String, Object>> registrarGestion(
+            String id,
+            Map<String, Object> body,
+            String userId,
+            String roles,
+            String userName
+    ) {
+        return requestsRestClient.post()
+                .uri("/api/requests/{id}/gestiones", id)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header(HEADER_USER_ID, userId)
                 .header(HEADER_USER_ROLES, nullToEmpty(roles))
-                .body(body);
+                .header(HEADER_USER_NAME, nullToEmpty(userName))
+                .body(body)
+                .exchange((request, response) -> ResponseEntity
+                        .status(response.getStatusCode())
+                        .contentType(resolveContentType(response.getHeaders().getContentType()))
+                        .body(response.bodyTo(MAP_TYPE)));
+    }
+
+    /** Arma el PUT de cambio de estado con {@code X-User-Id} y {@code X-User-Roles}. */
+    private RequestBodySpec statusRequest(String id, Map<String, Object> body, String userId, String roles) {
+        return statusRequest(id, body, userId, roles, null);
+    }
+
+    /** Arma el PUT y agrega {@code X-User-Name} solo si el nombre viene. */
+    private RequestBodySpec statusRequest(
+            String id, Map<String, Object> body, String userId, String roles, String userName
+    ) {
+        RequestBodySpec spec = requestsRestClient.put()
+                .uri("/api/requests/{id}/status", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HEADER_USER_ID, userId)
+                .header(HEADER_USER_ROLES, nullToEmpty(roles));
+        if (userName != null && !userName.isBlank()) {
+            spec = spec.header(HEADER_USER_NAME, userName.trim());
+        }
+        return spec.body(body);
     }
 
     /** Agrega {@code X-Procedure-Label} solo si viene. Si no, omite el header en lugar de mandarlo vacío. */

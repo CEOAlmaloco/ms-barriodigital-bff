@@ -38,9 +38,22 @@ public class RequestStatusOrchestrationService {
     public ResponseEntity<Map<String, Object>> updateStatus(
             String id, Map<String, Object> payload, String userId, String roles
     ) {
+        return updateStatus(id, payload, userId, roles, null);
+    }
+
+    /**
+     * Igual que {@link #updateStatus(String, Map, String, String)}.
+     * Si el nombre viene, requests lo guarda en el historial del cambio de estado.
+     */
+    public ResponseEntity<Map<String, Object>> updateStatus(
+            String id, Map<String, Object> payload, String userId, String roles, String userName
+    ) {
         Object rawStatus = payload.get("status");
         if (!(rawStatus instanceof String targetStatus) || !"ADMITIDO".equals(targetStatus.trim())) {
-            return requests.updateStatus(id, payload, userId, roles);
+            if (userName == null || userName.isBlank()) {
+                return requests.updateStatus(id, payload, userId, roles);
+            }
+            return requests.updateStatus(id, payload, userId, roles, userName.trim());
         }
         // También protege dev: nunca le asigna Funcionario al caller sin JWT.
         if (roles == null || Arrays.stream(roles.split(","))
@@ -95,7 +108,9 @@ public class RequestStatusOrchestrationService {
 
         RequestsProxyService.StatusChangeResult changed;
         try {
-            changed = requests.updateStatusForAdmission(id, payload, userId, roles);
+            changed = userName == null || userName.isBlank()
+                    ? requests.updateStatusForAdmission(id, payload, userId, roles)
+                    : requests.updateStatusForAdmission(id, payload, userId, roles, userName.trim());
         } catch (RestClientException ex) {
             throw failure(Code.ADMISSION_RESULT_UNCONFIRMED, "status", attempt, id, type, null);
         }
