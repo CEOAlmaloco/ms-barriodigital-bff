@@ -133,7 +133,33 @@ public class RequestsController {
                 .map(GrantedAuthority::getAuthority)
                 .map(role -> role.startsWith("ROLE_") ? role.substring(5) : role)
                 .collect(Collectors.joining(","));
-        return statusOrchestration.updateStatus(id, payload, resolveUserId(jwt), roles);
+        String name = jwt == null ? null : resolveUserName(jwt);
+        return statusOrchestration.updateStatus(id, payload, resolveUserId(jwt), roles, name);
+    }
+
+    /** Historial del trámite. Requests oculta las gestiones si quien pide es el vecino. */
+    @GetMapping("/{id}/actividad")
+    public ResponseEntity<Map<String, Object>> actividad(
+            @PathVariable String id,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return requestsProxyService.actividad(id, resolveUserId(jwt), resolveRoles(jwt));
+    }
+
+    /** Registra una gestión. En producción la seguridad exige rol Funcionario antes de llegar aquí. */
+    @PostMapping("/{id}/gestiones")
+    public ResponseEntity<Map<String, Object>> registrarGestion(
+            @PathVariable String id,
+            @RequestBody Map<String, Object> body,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return requestsProxyService.registrarGestion(
+                id,
+                body,
+                resolveUserId(jwt),
+                resolveRoles(jwt),
+                resolveUserName(jwt)
+        );
     }
 
     /**
