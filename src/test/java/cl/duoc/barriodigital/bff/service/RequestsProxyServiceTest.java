@@ -10,13 +10,17 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.mock.http.client.MockClientHttpRequest;
 
 import java.util.List;
 import java.util.Map;
+import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.headerDoesNotExist;
@@ -142,6 +146,58 @@ class RequestsProxyServiceTest {
         );
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        server.verify();
+    }
+
+    @Test
+    void createWithAttachmentReenviaLasPartesYLaIdentidad() {
+        server.expect(requestTo("http://requests-test/api/requests"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("X-User-Id", "oid-1"))
+                .andExpect(header("X-User-Roles", "Vecino"))
+                .andExpect(header("X-Procedure-Label", "Bache%20en%20calle"))
+                .andExpect(request -> {
+                    assertTrue(request.getHeaders().getContentType()
+                            .isCompatibleWith(MediaType.MULTIPART_FORM_DATA));
+                    String payload = new String(
+                            ((MockClientHttpRequest) request).getBodyAsBytes(),
+                            StandardCharsets.UTF_8
+                    );
+                    assertTrue(payload.contains("name=\"request\""));
+                    assertTrue(payload.contains("name=\"attachment\""));
+                    assertTrue(payload.contains("evidencia"));
+                })
+                .andRespond(withStatus(HttpStatus.CREATED)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"id\":\"abc\",\"hasAttachment\":true}"));
+
+        var response = service.createWithAttachment(
+                Map.of("description", "Hueco", "procedureType", "bache", "address", "Calle 1"),
+                new MockMultipartFile("attachment", "foto.png", MediaType.IMAGE_PNG_VALUE, new byte[]{1, 2, 3}),
+                "oid-1",
+                "Vecino",
+                "Alex Ampuero",
+                "vecino@example.com",
+                "Bache%20en%20calle"
+        );
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        assertEquals(Boolean.TRUE, response.getBody().get("hasAttachment"));
+        server.verify();
+    }
+
+    @Test
+    void getAttachmentDesactivaCacheYEvitaSniffingDeContenido() {
+        server.expect(requestTo("http://requests-test/api/requests/id-1/attachment"))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(header("X-User-Id", "oid-1"))
+                .andRespond(withSuccess(new byte[]{1, 2, 3}, MediaType.IMAGE_PNG));
+
+        var response = service.getAttachment("id-1", "oid-1", "Vecino");
+
+        assertEquals("private, no-store", response.getHeaders().getCacheControl());
+        assertEquals("nosniff", response.getHeaders().getFirst("X-Content-Type-Options"));
+        assertEquals(3, response.getBody().length);
         server.verify();
     }
 

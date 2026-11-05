@@ -13,7 +13,8 @@ Contrato: `barriodigital-infra` → `docs/decisiones.md`.
 | `GET /actuator/health` | público | — |
 | `GET /api/ping` | JWT | cualquier rol autenticado |
 | `GET /api/admin/ping` | JWT | **Admin** (si no → **403**) |
-| `POST /api/requests` | JWT | cualquier rol autenticado → proxy a requests |
+| `POST /api/requests` | JWT | cualquier rol autenticado → proxy a requests (JSON o multipart con imagen opcional) |
+| `GET /api/requests/{id}/attachment` | JWT | imagen privada; requests valida titular o personal |
 | `GET /api/requests` | JWT | listado (filtros `status`, `from`, `to`) |
 | `GET /api/requests/meta/transitions` | JWT | proxy del mapa de transiciones |
 | `GET /api/requests/{id}` | JWT | detalle |
@@ -54,6 +55,8 @@ curl.exe -i -X POST http://localhost:8080/api/requests `
 ```
 
 Si requests responde 400 o 404, el BFF **conserva** ese status (no lo tapa con 500).
+
+La creación también admite `multipart/form-data` con `request` (JSON) y una parte `attachment` opcional. Se limita a 5 MB y el servicio requests valida y normaliza los bytes; WebP se convierte a PNG en el frontend. La descarga pasa por `GET /api/requests/{id}/attachment`, lleva los headers de identidad derivados del JWT y se devuelve con `Cache-Control: private, no-store` y `X-Content-Type-Options: nosniff`.
 
 ### Tipo de trámite validado contra catalog
 

@@ -12,6 +12,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -24,9 +25,11 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -89,6 +92,103 @@ class RequestsControllerTest {
                 eq(""),
                 eq("Bache%20en%20calle")
         );
+    }
+
+    @Test
+    void postMultipartValidaElCatalogoYReenviaLaImagen() throws Exception {
+        when(catalogProxyService.procedures()).thenReturn(CATALOG);
+        when(requestsProxyService.createWithAttachment(
+                anyMap(), any(), eq("dev-user"), eq("Vecino"), eq("dev-user"), eq(""), eq("Bache%20en%20calle")))
+                .thenReturn(ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", "uuid-attachment")));
+
+        MockMultipartFile request = new MockMultipartFile(
+                "request",
+                "",
+                MediaType.APPLICATION_JSON_VALUE,
+                "{\"description\":\"Hueco\",\"procedureType\":\"bache\",\"address\":\"Calle 1\"}".getBytes()
+        );
+        MockMultipartFile attachment = new MockMultipartFile(
+                "attachment",
+                "evidencia.png",
+                MediaType.IMAGE_PNG_VALUE,
+                new byte[]{1, 2, 3}
+        );
+
+        mockMvc.perform(multipart("/api/requests")
+                        .file(request)
+                        .file(attachment))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value("uuid-attachment"));
+
+        verify(requestsProxyService).createWithAttachment(
+                eq(Map.of("description", "Hueco", "procedureType", "bache", "address", "Calle 1")),
+                eq(attachment),
+                eq("dev-user"),
+                eq("Vecino"),
+                eq("dev-user"),
+                eq(""),
+                eq("Bache%20en%20calle")
+        );
+    }
+
+    @Test
+    void postConUbicacionReenviaSectorReferenciaYCoordenadas() throws Exception {
+        when(catalogProxyService.procedures()).thenReturn(CATALOG);
+        when(requestsProxyService.create(anyMap(), any(), any(), any(), any(), any()))
+                .thenReturn(ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", "uuid-ubicacion")));
+
+        mockMvc.perform(post("/api/requests")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"description":"Hueco","procedureType":"bache","address":"Calle 1",
+                                 "sector":"centro","locationReference":"frente al local 12",
+                                 "latitude":-33.4489,"longitude":-70.6693,"locationPrecision":"approximate"}
+                                """))
+                .andExpect(status().isCreated());
+
+        verify(requestsProxyService).create(
+                eq(Map.of(
+                        "description", "Hueco",
+                        "procedureType", "bache",
+                        "address", "Calle 1",
+                        "sector", "centro",
+                        "locationReference", "frente al local 12",
+                        "latitude", -33.4489,
+                        "longitude", -70.6693,
+                        "locationPrecision", "approximate"
+                )),
+                eq("dev-user"),
+                eq("Vecino"),
+                eq("dev-user"),
+                eq(""),
+                eq("Bache%20en%20calle")
+        );
+    }
+
+    @Test
+    void getAdjuntoPropagaBytesYHeadersPrivados() throws Exception {
+        when(requestsProxyService.getAttachment("id-1", "dev-user", "Vecino"))
+                .thenReturn(ResponseEntity.ok()
+                        .contentType(MediaType.IMAGE_PNG)
+                        .header("Cache-Control", "private, no-store")
+                        .header("X-Content-Type-Options", "nosniff")
+                        .body(new byte[]{1, 2, 3}));
+
+        mockMvc.perform(get("/api/requests/id-1/attachment"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.IMAGE_PNG))
+                .andExpect(header().string("Cache-Control", "private, no-store"))
+                .andExpect(header().string("X-Content-Type-Options", "nosniff"))
+                .andExpect(content().bytes(new byte[]{1, 2, 3}));
+    }
+
+    @Test
+    void getAdjuntoPropaga404SinTocarlo() throws Exception {
+        when(requestsProxyService.getAttachment("id-404", "dev-user", "Vecino"))
+                .thenReturn(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+
+        mockMvc.perform(get("/api/requests/id-404/attachment"))
+                .andExpect(status().isNotFound());
     }
 
     @Test
