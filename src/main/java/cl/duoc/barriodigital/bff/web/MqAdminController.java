@@ -11,7 +11,7 @@ import java.io.IOException;
 
 /**
  * Expone la administración de colas. El JWT se valida en el BFF y solo el rol Admin pasa.
- * mq-admin recibe {@code X-User-Roles}, nunca el token.
+ * mq-admin recibe los headers de identidad, nunca el token.
  */
 @RestController
 public class MqAdminController {
@@ -23,10 +23,10 @@ public class MqAdminController {
         this.mqAdminProxyService = mqAdminProxyService;
     }
 
-    /** Reenvía cualquier petición bajo {@code /api/mq}, con el rol sacado del JWT. */
+    /** Reenvía cualquier petición bajo {@code /api/mq}, con la identidad sacada del JWT. */
     @RequestMapping("/api/mq/**")
     public ResponseEntity<byte[]> proxy(HttpServletRequest request, Authentication authentication) throws IOException {
         byte[] body = request.getInputStream().readAllBytes();
-        return mqAdminProxyService.forward(request, body, CatalogCaller.rolesHeader(authentication));
+        return mqAdminProxyService.forward(request, body, CatalogCaller.identity(authentication));
     }
 }

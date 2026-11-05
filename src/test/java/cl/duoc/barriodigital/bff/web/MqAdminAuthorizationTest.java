@@ -57,7 +57,8 @@ class MqAdminAuthorizationTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status").value(401));
 
-        verify(mqAdminProxyService, never()).forward(any(), any(), any());
+        verify(mqAdminProxyService, never()).forward(
+                any(HttpServletRequest.class), any(), any(CatalogCaller.Identity.class));
     }
 
     @ParameterizedTest
@@ -72,12 +73,13 @@ class MqAdminAuthorizationTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403));
 
-        verify(mqAdminProxyService, never()).forward(any(), any(), any());
+        verify(mqAdminProxyService, never()).forward(
+                any(HttpServletRequest.class), any(), any(CatalogCaller.Identity.class));
     }
 
     @Test
     void adminListaLasColas() throws Exception {
-        when(mqAdminProxyService.forward(any(HttpServletRequest.class), any(), eq("Admin")))
+        when(mqAdminProxyService.forward(any(HttpServletRequest.class), any(), eq(adminIdentity())))
                 .thenReturn(ResponseEntity.ok()
                         .contentType(MediaType.APPLICATION_JSON)
                         .body("[{\"name\":\"q.demo\"}]".getBytes(StandardCharsets.UTF_8)));
@@ -86,12 +88,12 @@ class MqAdminAuthorizationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("q.demo"));
 
-        verify(mqAdminProxyService).forward(any(HttpServletRequest.class), any(), eq("Admin"));
+        verify(mqAdminProxyService).forward(any(HttpServletRequest.class), any(), eq(adminIdentity()));
     }
 
     @Test
     void adminCreaUnaColaYElBffResponde201() throws Exception {
-        when(mqAdminProxyService.forward(any(HttpServletRequest.class), any(), eq("Admin")))
+        when(mqAdminProxyService.forward(any(HttpServletRequest.class), any(), eq(adminIdentity())))
                 .thenReturn(ResponseEntity.status(HttpStatus.CREATED)
                         .contentType(MediaType.APPLICATION_JSON)
                         .body("{\"name\":\"q.demo\"}".getBytes(StandardCharsets.UTF_8)));
@@ -106,7 +108,7 @@ class MqAdminAuthorizationTest {
 
     @Test
     void mqAdminCaidoResponde503ConElCuerpoDelHandler() throws Exception {
-        when(mqAdminProxyService.forward(any(HttpServletRequest.class), any(), eq("Admin")))
+        when(mqAdminProxyService.forward(any(HttpServletRequest.class), any(), eq(adminIdentity())))
                 .thenThrow(new ResponseStatusException(
                         HttpStatus.SERVICE_UNAVAILABLE, MqAdminProxyService.UNAVAILABLE));
 
@@ -120,8 +122,15 @@ class MqAdminAuthorizationTest {
 
     private static org.springframework.test.web.servlet.request.RequestPostProcessor admin() {
         return jwt()
-                .jwt(token -> token.claim("roles", List.of("Admin")))
+                .jwt(token -> token
+                        .claim("roles", List.of("Admin"))
+                        .claim("oid", "admin-1")
+                        .claim("name", "Admin Ñandú"))
                 .authorities(new SimpleGrantedAuthority("ROLE_Admin"));
+    }
+
+    private static CatalogCaller.Identity adminIdentity() {
+        return new CatalogCaller.Identity("admin-1", "Admin", "Admin%20%C3%91and%C3%BA");
     }
 
     @TestConfiguration

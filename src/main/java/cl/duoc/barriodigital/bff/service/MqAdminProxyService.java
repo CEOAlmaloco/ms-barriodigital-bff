@@ -20,7 +20,7 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * Reenvía la administración de colas a mq-admin: método, ruta, query y cuerpo.
- * El JWT no sale del BFF; solo se manda {@code X-User-Roles}. Si mq-admin no conecta o no responde, responde 503 para que lo escriba el manejador de errores.
+ * El JWT no sale del BFF; solo se mandan los headers de identidad. Si mq-admin no conecta o no responde, responde 503 para que lo escriba el manejador de errores.
  */
 @Service
 public class MqAdminProxyService {
@@ -37,8 +37,15 @@ public class MqAdminProxyService {
         this.mqAdminRestClient = mqAdminRestClient;
     }
 
-    /** Reenvía la petición y devuelve la respuesta. Un corte de red se vuelve 503. */
+    /** Reenvía la petición con el rol en {@code X-User-Roles}. */
     public ResponseEntity<byte[]> forward(HttpServletRequest request, byte[] body, String rolesHeader) {
+        return forward(request, body, new CatalogCaller.Identity(null, rolesHeader, null));
+    }
+
+    /** Reenvía la petición y la identidad completa para auditoría. Un corte de red se vuelve 503. */
+    public ResponseEntity<byte[]> forward(
+            HttpServletRequest request, byte[] body, CatalogCaller.Identity identity
+    ) {
         HttpMethod method = HttpMethod.valueOf(request.getMethod());
         try {
             RequestBodySpec spec = mqAdminRestClient.method(method).uri(builder -> {
@@ -49,7 +56,7 @@ public class MqAdminProxyService {
                 }
                 return builder.build(true);
             });
-            spec.headers(headers -> copyHeaders(headers, request, rolesHeader));
+            spec.headers(headers -> copyHeaders(headers, request, identity));
             RequestHeadersSpec<?> call = hasBody(body) ? spec.body(body) : spec;
             return call.exchange((clientRequest, response) -> toResponse(response));
         } catch (RestClientException ex) {
@@ -57,14 +64,29 @@ public class MqAdminProxyService {
         }
     }
 
-    /** Copia {@code X-User-Roles} y el Content-Type. No copia el header Authorization. */
-    private static void copyHeaders(HttpHeaders headers, HttpServletRequest request, String rolesHeader) {
-        if (rolesHeader != null && !rolesHeader.isBlank()) {
-            headers.set(CatalogCaller.HEADER_USER_ROLES, rolesHeader);
+    /** Copia la identidad y el Content-Type. No copia el header Authorization. */
+    private static void copyHeaders(
+            HttpHeaders headers, HttpServletRequest request, CatalogCaller.Identity identity
+    ) {
+        if (identity != null) {
+            if (hasText(identity.userId())) {
+                headers.set(CatalogCaller.HEADER_USER_ID, identity.userId());
+            }
+            if (hasText(identity.roles())) {
+                headers.set(CatalogCaller.HEADER_USER_ROLES, identity.roles());
+            }
+            if (hasText(identity.userName())) {
+                headers.set(CatalogCaller.HEADER_USER_NAME, identity.userName());
+            }
         }
         if (request.getContentType() != null) {
             headers.set(HttpHeaders.CONTENT_TYPE, request.getContentType());
         }
+    }
+
+    /** Indica si el header tiene un valor útil para reenviar. */
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     /** Indica si hay cuerpo para reenviar. */

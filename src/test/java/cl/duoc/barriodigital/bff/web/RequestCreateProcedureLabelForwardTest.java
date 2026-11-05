@@ -100,6 +100,29 @@ class RequestCreateProcedureLabelForwardTest {
     }
 
     @Test
+    void postReenviaElNombreConTildesYCodificado() throws Exception {
+        when(catalogProxyService.procedures()).thenReturn(List.of(
+                Map.of("value", "bache", "label", "Bache en calle", "active", true)
+        ));
+        RequestsClientStub.server.expect(requestTo("http://requests-test/api/requests"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("X-User-Name", "Mar%C3%ADa%20Jos%C3%A9%20%C3%91u%C3%B1ez"))
+                .andRespond(withStatus(HttpStatus.CREATED)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"id\":\"abc\",\"status\":\"INGRESADO\"}"));
+
+        mockMvc.perform(post("/api/requests")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"description":"Hueco","procedureType":"bache","address":"Calle 1"}
+                                """)
+                        .with(vecinoConNombre()))
+                .andExpect(status().isCreated());
+
+        RequestsClientStub.server.verify();
+    }
+
+    @Test
     void postSinLabelEnCatalogNoMandaElHeader() throws Exception {
         Map<String, Object> sinLabel = new HashMap<>();
         sinLabel.put("value", "bache");
@@ -139,6 +162,15 @@ class RequestCreateProcedureLabelForwardTest {
                 .jwt(token -> token
                         .claim("oid", "oid-1")
                         .claim("roles", List.of("Vecino")))
+                .authorities(new SimpleGrantedAuthority("ROLE_Vecino"));
+    }
+
+    private static RequestPostProcessor vecinoConNombre() {
+        return jwt()
+                .jwt(token -> token
+                        .claim("oid", "oid-1")
+                        .claim("roles", List.of("Vecino"))
+                        .claim("name", "María José Ñuñez"))
                 .authorities(new SimpleGrantedAuthority("ROLE_Vecino"));
     }
 

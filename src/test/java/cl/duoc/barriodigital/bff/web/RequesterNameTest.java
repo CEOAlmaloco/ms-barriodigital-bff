@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.jwt.Jwt;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class RequesterNameTest {
 
@@ -44,6 +45,12 @@ class RequesterNameTest {
                 .build();
 
         assertEquals("alex@duoc.cl", RequestsController.resolveUserName(jwt));
+    }
+
+    @Test
+    void elNombreSeCodificaEnUrlComoElLabel() {
+        assertEquals("Mar%C3%ADa%20%C3%91and%C3%BA", RequestsController.encodeUserName("María Ñandú"));
+        assertNull(RequestsController.encodeUserName("   "));
     }
 
     private static Jwt.Builder jwt() {

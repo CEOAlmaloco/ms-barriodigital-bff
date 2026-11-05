@@ -19,6 +19,7 @@ import java.util.Map;
 
 /**
  * Reenvía a catalog el listado, el alta y la edición de tipos, y también la reserva y la devolución de cupo.
+ * POST y PUT llevan la identidad completa para auditoría.
  * Propaga status y body: un 400, 403, 404 o 409 del dominio no se convierte en 500, y un 5xx no muestra el error interno.
  */
 @Service
@@ -69,20 +70,32 @@ public class CatalogProxyService {
         return procedures;
     }
 
-    /** Crea un tipo y manda el rol en {@code X-User-Roles}. */
+    /** Crea un tipo con el rol en {@code X-User-Roles}. */
     public ResponseEntity<Map<String, Object>> create(Map<String, Object> body, String rolesHeader) {
+        return create(body, new CatalogCaller.Identity(null, rolesHeader, null));
+    }
+
+    /** Crea un tipo y reenvía la identidad completa para auditoría. */
+    public ResponseEntity<Map<String, Object>> create(Map<String, Object> body, CatalogCaller.Identity identity) {
         RequestBodySpec spec = catalogRestClient.post()
                 .uri("/api/catalog/procedures")
                 .contentType(MediaType.APPLICATION_JSON);
-        return exchangeMap(withRoles(spec, rolesHeader).body(body));
+        return exchangeMap(withIdentity(spec, identity).body(body));
     }
 
-    /** Edita un tipo y manda el rol en {@code X-User-Roles}. */
+    /** Edita un tipo con el rol en {@code X-User-Roles}. */
     public ResponseEntity<Map<String, Object>> update(String value, Map<String, Object> body, String rolesHeader) {
+        return update(value, body, new CatalogCaller.Identity(null, rolesHeader, null));
+    }
+
+    /** Edita un tipo y reenvía la identidad completa para auditoría. */
+    public ResponseEntity<Map<String, Object>> update(
+            String value, Map<String, Object> body, CatalogCaller.Identity identity
+    ) {
         RequestBodySpec spec = catalogRestClient.put()
                 .uri("/api/catalog/procedures/{value}", value)
                 .contentType(MediaType.APPLICATION_JSON);
-        return exchangeMap(withRoles(spec, rolesHeader).body(body));
+        return exchangeMap(withIdentity(spec, identity).body(body));
     }
 
     /** Reserva un cupo. Solo usa el status HTTP, sin reintentos. */
@@ -99,12 +112,26 @@ public class CatalogProxyService {
                 .exchange((request, response) -> response.getStatusCode());
     }
 
-    /** Agrega {@code X-User-Roles} si viene un rol. */
-    private static RequestBodySpec withRoles(RequestBodySpec spec, String rolesHeader) {
-        if (rolesHeader == null || rolesHeader.isBlank()) {
+    /** Agrega los headers de identidad que vengan con texto. */
+    private static RequestBodySpec withIdentity(RequestBodySpec spec, CatalogCaller.Identity identity) {
+        if (identity == null) {
             return spec;
         }
-        return spec.header(CatalogCaller.HEADER_USER_ROLES, rolesHeader);
+        if (hasText(identity.userId())) {
+            spec = spec.header(CatalogCaller.HEADER_USER_ID, identity.userId());
+        }
+        if (hasText(identity.roles())) {
+            spec = spec.header(CatalogCaller.HEADER_USER_ROLES, identity.roles());
+        }
+        if (hasText(identity.userName())) {
+            spec = spec.header(CatalogCaller.HEADER_USER_NAME, identity.userName());
+        }
+        return spec;
+    }
+
+    /** Indica si el header tiene un valor útil para reenviar. */
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     /** Lee la respuesta de un tipo. Un 5xx se reemplaza por un mensaje genérico. */

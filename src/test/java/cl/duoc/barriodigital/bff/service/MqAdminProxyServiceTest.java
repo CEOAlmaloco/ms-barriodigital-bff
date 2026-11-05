@@ -1,5 +1,7 @@
 package cl.duoc.barriodigital.bff.service;
 
+import cl.duoc.barriodigital.bff.web.CatalogCaller;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
@@ -60,6 +62,28 @@ class MqAdminProxyServiceTest {
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertEquals("{\"name\":\"q.demo\"}", new String(response.getBody(), StandardCharsets.UTF_8));
+        server.verify();
+    }
+
+    @Test
+    void postReenviaLaIdentidadCompleta() {
+        server.expect(requestTo("http://mq-test/api/mq/queues"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("X-User-Id", "admin-1"))
+                .andExpect(header("X-User-Roles", "Admin"))
+                .andExpect(header("X-User-Name", "Admin%20%C3%91and%C3%BA"))
+                .andExpect(header("Content-Type", MediaType.APPLICATION_JSON_VALUE))
+                .andRespond(withSuccess("{\"name\":\"q.demo\"}", MediaType.APPLICATION_JSON));
+
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/mq/queues");
+        request.setContentType(MediaType.APPLICATION_JSON_VALUE);
+
+        service.forward(
+                request,
+                "{\"name\":\"q.demo\"}".getBytes(StandardCharsets.UTF_8),
+                new CatalogCaller.Identity("admin-1", "Admin", "Admin%20%C3%91and%C3%BA")
+        );
+
         server.verify();
     }
 

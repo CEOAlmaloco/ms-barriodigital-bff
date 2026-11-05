@@ -21,9 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.web.util.UriUtils;
 
-import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -71,7 +69,7 @@ public class RequestsController {
                 payload,
                 resolveUserId(jwt),
                 resolveRoles(jwt),
-                resolveUserName(jwt),
+                encodeUserName(resolveUserName(jwt)),
                 resolveUserEmail(jwt),
                 encodeProcedureLabel(procedureLabel)
         );
@@ -82,10 +80,15 @@ public class RequestsController {
      * El espacio queda como %20 y el + como %2B; requests lo lee con URLDecoder.
      */
     static String encodeProcedureLabel(String label) {
-        if (label == null || label.isBlank()) {
-            return null;
-        }
-        return UriUtils.encode(label, StandardCharsets.UTF_8);
+        return CatalogCaller.encodeHeaderValue(label);
+    }
+
+    /**
+     * Codifica el nombre en URL (UTF-8) porque un header no transporta tildes de forma segura.
+     * Requests lo decodifica con URLDecoder, igual que el label del tipo.
+     */
+    static String encodeUserName(String userName) {
+        return CatalogCaller.encodeHeaderValue(userName);
     }
 
     /** Devuelve los cambios de estado permitidos. */
@@ -133,7 +136,7 @@ public class RequestsController {
                 .map(GrantedAuthority::getAuthority)
                 .map(role -> role.startsWith("ROLE_") ? role.substring(5) : role)
                 .collect(Collectors.joining(","));
-        String name = jwt == null ? null : resolveUserName(jwt);
+        String name = jwt == null ? null : encodeUserName(resolveUserName(jwt));
         return statusOrchestration.updateStatus(id, payload, resolveUserId(jwt), roles, name);
     }
 
@@ -158,7 +161,7 @@ public class RequestsController {
                 body,
                 resolveUserId(jwt),
                 resolveRoles(jwt),
-                resolveUserName(jwt)
+                encodeUserName(resolveUserName(jwt))
         );
     }
 
@@ -170,15 +173,11 @@ public class RequestsController {
         if (jwt == null) {
             return "dev-user";
         }
-        String oid = jwt.getClaimAsString("oid");
-        if (oid != null && !oid.isBlank()) {
-            return oid;
+        String id = CatalogCaller.userId(jwt);
+        if (id == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "JWT sin oid/sub");
         }
-        String sub = jwt.getSubject();
-        if (sub != null && !sub.isBlank()) {
-            return sub;
-        }
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "JWT sin oid/sub");
+        return id;
     }
 
     /**
@@ -189,12 +188,8 @@ public class RequestsController {
         if (jwt == null) {
             return "dev-user";
         }
-        String name = readableClaim(jwt.getClaimAsString("name"));
-        if (name != null) {
-            return name;
-        }
-        String preferred = readableClaim(jwt.getClaimAsString("preferred_username"));
-        return preferred == null ? "" : preferred;
+        String name = CatalogCaller.userName(jwt);
+        return name == null ? "" : name;
     }
 
     /**

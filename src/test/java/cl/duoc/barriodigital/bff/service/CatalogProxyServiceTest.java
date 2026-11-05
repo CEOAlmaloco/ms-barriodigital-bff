@@ -1,5 +1,7 @@
 package cl.duoc.barriodigital.bff.service;
 
+import cl.duoc.barriodigital.bff.web.CatalogCaller;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -146,6 +148,29 @@ class CatalogProxyServiceTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("bache", response.getBody().get("value"));
         assertEquals("Bache grave", response.getBody().get("label"));
+        server.verify();
+    }
+
+    @Test
+    void createYUpdateReenvianLaIdentidadCompleta() {
+        CatalogCaller.Identity identity = new CatalogCaller.Identity(
+                "admin-1", "Admin", "Admin%20%C3%91and%C3%BA");
+        server.expect(requestTo("http://catalog-test/api/catalog/procedures"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("X-User-Id", "admin-1"))
+                .andExpect(header("X-User-Roles", "Admin"))
+                .andExpect(header("X-User-Name", "Admin%20%C3%91and%C3%BA"))
+                .andRespond(withSuccess("{\"value\":\"semaforo\"}", MediaType.APPLICATION_JSON));
+        server.expect(requestTo("http://catalog-test/api/catalog/procedures/bache"))
+                .andExpect(method(HttpMethod.PUT))
+                .andExpect(header("X-User-Id", "admin-1"))
+                .andExpect(header("X-User-Roles", "Admin"))
+                .andExpect(header("X-User-Name", "Admin%20%C3%91and%C3%BA"))
+                .andRespond(withSuccess("{\"value\":\"bache\"}", MediaType.APPLICATION_JSON));
+
+        service.create(Map.of("value", "semaforo", "label", "Semáforo"), identity);
+        service.update("bache", Map.of("label", "Bache grave"), identity);
+
         server.verify();
     }
 
