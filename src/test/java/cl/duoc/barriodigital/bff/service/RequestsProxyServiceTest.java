@@ -106,7 +106,7 @@ class RequestsProxyServiceTest {
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(header("X-User-Id", "oid-1"))
                 .andExpect(header("X-User-Roles", "Vecino"))
-                .andExpect(header("X-User-Name", "Alex Ampuero"))
+                .andExpect(header("X-User-Name", "Alex%20Ampuero"))
                 .andExpect(header("X-User-Email", "vecino@example.com"))
                 .andExpect(header("X-Procedure-Label", "Bache%20en%20calle"))
                 .andRespond(withStatus(HttpStatus.CREATED)
@@ -117,7 +117,7 @@ class RequestsProxyServiceTest {
                 Map.of("description", "Hueco", "procedureType", "bache", "address", "Calle 1"),
                 "oid-1",
                 "Vecino",
-                "Alex Ampuero",
+                "Alex%20Ampuero",
                 "vecino@example.com",
                 "Bache%20en%20calle"
         );

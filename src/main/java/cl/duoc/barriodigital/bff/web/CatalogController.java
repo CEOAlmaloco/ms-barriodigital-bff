@@ -15,7 +15,7 @@ import java.util.Map;
 
 /**
  * Expone el catálogo: el JWT se valida en el BFF y catalog no lo recibe.
- * GET lista los tipos para cualquier rol autenticado; POST y PUT exigen rol Admin y reenvían ese rol en {@code X-User-Roles}.
+ * GET lista los tipos para cualquier rol autenticado; POST y PUT exigen rol Admin y reenvían la identidad para auditoría.
  */
 @RestController
 @RequestMapping("/api/catalog")
@@ -34,22 +34,22 @@ public class CatalogController {
         return catalogProxyService.list();
     }
 
-    /** Crea un tipo. El rol sale del JWT ya validado. */
+    /** Crea un tipo. La identidad sale del JWT ya validado. */
     @PostMapping("/procedures")
     public ResponseEntity<Map<String, Object>> create(
             @RequestBody Map<String, Object> body,
             Authentication authentication
     ) {
-        return catalogProxyService.create(body, CatalogCaller.rolesHeader(authentication));
+        return catalogProxyService.create(body, CatalogCaller.identity(authentication));
     }
 
-    /** Edita un tipo. El código va en la URL y el rol sale del JWT. */
+    /** Edita un tipo. El código va en la URL y la identidad sale del JWT. */
     @PutMapping("/procedures/{value}")
     public ResponseEntity<Map<String, Object>> update(
             @PathVariable String value,
             @RequestBody Map<String, Object> body,
             Authentication authentication
     ) {
-        return catalogProxyService.update(value, body, CatalogCaller.rolesHeader(authentication));
+        return catalogProxyService.update(value, body, CatalogCaller.identity(authentication));
     }
 }

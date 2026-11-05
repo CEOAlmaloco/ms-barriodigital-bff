@@ -16,12 +16,15 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -85,43 +88,50 @@ class CatalogAuthorizationTest {
                         .content("{\"label\":\"Bache grave\",\"active\":false,\"dailyQuota\":4}"))
                 .andExpect(status().isForbidden());
 
-        verify(catalogProxyService, never()).create(anyMap(), org.mockito.ArgumentMatchers.any());
+        verify(catalogProxyService, never()).create(anyMap(), any(CatalogCaller.Identity.class));
         verify(catalogProxyService, never()).update(
-                org.mockito.ArgumentMatchers.any(),
+                anyString(),
                 anyMap(),
-                org.mockito.ArgumentMatchers.any()
+                any(CatalogCaller.Identity.class)
         );
     }
 
     @Test
-    void adminCreaYEditaYElProxyRecibeElRolDelToken() throws Exception {
-        when(catalogProxyService.create(anyMap(), eq("Admin"))).thenReturn(ResponseEntity
+    void adminCreaYEditaYElProxyRecibeLaIdentidadDelToken() throws Exception {
+        CatalogCaller.Identity identity = new CatalogCaller.Identity(
+                "admin-1", "Admin", "Admin%20%C3%91and%C3%BA");
+        when(catalogProxyService.create(anyMap(), eq(identity))).thenReturn(ResponseEntity
                 .status(201)
                 .body(Map.of("value", "semaforo", "label", "Semáforo")));
-        when(catalogProxyService.update(eq("bache"), anyMap(), eq("Admin"))).thenReturn(ResponseEntity.ok(
+        when(catalogProxyService.update(eq("bache"), anyMap(), eq(identity))).thenReturn(ResponseEntity.ok(
                 Map.of("value", "bache", "label", "Bache grave")
         ));
 
         mockMvc.perform(post("/api/catalog/procedures")
-                        .with(jwt()
-                                .jwt(token -> token.claim("roles", List.of("Admin")))
-                                .authorities(new SimpleGrantedAuthority("ROLE_Admin")))
+                        .with(admin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"value\":\"semaforo\",\"label\":\"Semáforo\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.value").value("semaforo"));
 
         mockMvc.perform(put("/api/catalog/procedures/bache")
-                        .with(jwt()
-                                .jwt(token -> token.claim("roles", List.of("Admin")))
-                                .authorities(new SimpleGrantedAuthority("ROLE_Admin")))
+                        .with(admin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"label\":\"Bache grave\",\"active\":false,\"dailyQuota\":4}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.value").value("bache"));
 
-        verify(catalogProxyService).create(anyMap(), eq("Admin"));
-        verify(catalogProxyService).update(eq("bache"), anyMap(), eq("Admin"));
+        verify(catalogProxyService).create(anyMap(), eq(identity));
+        verify(catalogProxyService).update(eq("bache"), anyMap(), eq(identity));
+    }
+
+    private static RequestPostProcessor admin() {
+        return jwt()
+                .jwt(token -> token
+                        .claim("roles", List.of("Admin"))
+                        .claim("oid", "admin-1")
+                        .claim("name", "Admin Ñandú"))
+                .authorities(new SimpleGrantedAuthority("ROLE_Admin"));
     }
 
     @TestConfiguration
