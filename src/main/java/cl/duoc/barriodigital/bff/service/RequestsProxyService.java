@@ -2,13 +2,22 @@ package cl.duoc.barriodigital.bff.service;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClient.RequestBodySpec;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -65,6 +74,52 @@ public class RequestsProxyService {
                         .body(response.bodyTo(MAP_TYPE)));
     }
 
+    /** Reenvía la solicitud y el archivo en partes separadas; el servicio interno valida los bytes. */
+    public ResponseEntity<Map<String, Object>> createWithAttachment(
+            Map<String, Object> body,
+            MultipartFile attachment,
+            String userId,
+            String roles,
+            String userName,
+            String userEmail,
+            String procedureLabel
+    ) {
+        byte[] content;
+        try {
+            content = attachment.getBytes();
+        } catch (IOException exception) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "No se pudo leer la imagen adjunta");
+        }
+
+        HttpHeaders jsonHeaders = new HttpHeaders();
+        jsonHeaders.setContentType(MediaType.APPLICATION_JSON);
+        HttpHeaders imageHeaders = new HttpHeaders();
+        imageHeaders.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+
+        MultiValueMap<String, Object> parts = new LinkedMultiValueMap<>();
+        parts.add("request", new HttpEntity<>(body, jsonHeaders));
+        parts.add("attachment", new HttpEntity<>(new ByteArrayResource(content) {
+            @Override
+            public String getFilename() {
+                return "evidencia";
+            }
+        }, imageHeaders));
+
+        RequestBodySpec spec = requestsRestClient.post()
+                .uri("/api/requests")
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .header(HEADER_USER_ID, userId)
+                .header(HEADER_USER_ROLES, nullToEmpty(roles))
+                .header(HEADER_USER_NAME, nullToEmpty(userName))
+                .header(HEADER_USER_EMAIL, nullToEmpty(userEmail));
+        return withProcedureLabel(spec, procedureLabel)
+                .body(parts)
+                .exchange((request, response) -> ResponseEntity
+                        .status(response.getStatusCode())
+                        .contentType(resolveContentType(response.getHeaders().getContentType()))
+                        .body(response.bodyTo(MAP_TYPE)));
+    }
+
     /** Pide los cambios de estado permitidos. */
     public ResponseEntity<Map<String, List<String>>> transitions() {
         return requestsRestClient.get()
@@ -85,6 +140,29 @@ public class RequestsProxyService {
                         .status(response.getStatusCode())
                         .contentType(resolveContentType(response.getHeaders().getContentType()))
                         .body(response.bodyTo(MAP_TYPE)));
+    }
+
+    /** Obtiene la imagen de requests con la identidad verificada por el BFF. */
+    public ResponseEntity<byte[]> getAttachment(String id, String userId, String roles) {
+        return requestsRestClient.get()
+                .uri("/api/requests/{id}/attachment", id)
+                .header(HEADER_USER_ID, userId)
+                .header(HEADER_USER_ROLES, nullToEmpty(roles))
+                .exchange((request, response) -> {
+                    HttpHeaders headers = new HttpHeaders();
+                    headers.setContentType(resolveContentType(response.getHeaders().getContentType()));
+                    headers.setCacheControl("private, no-store");
+                    headers.set("X-Content-Type-Options", "nosniff");
+                    String disposition = response.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION);
+                    if (disposition != null) {
+                        headers.set(HttpHeaders.CONTENT_DISPOSITION, disposition);
+                    }
+                    return new ResponseEntity<>(
+                            response.getBody().readAllBytes(),
+                            headers,
+                            response.getStatusCode()
+                    );
+                });
     }
 
     /** Pide el listado. Si vienen estado o fechas, los manda como query. */

@@ -9,6 +9,10 @@ server:
 spring:
   application:
     name: ms-barriodigital-bff
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
   config:
     import: optional:file:.env[.properties]
   security:

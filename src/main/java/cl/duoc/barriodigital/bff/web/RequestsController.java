@@ -7,6 +7,7 @@ import cl.duoc.barriodigital.bff.web.dto.ChangeStatusDto;
 import cl.duoc.barriodigital.bff.web.dto.CreateRequestDto;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.Authentication;
@@ -19,7 +20,9 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriUtils;
 
@@ -56,10 +59,28 @@ public class RequestsController {
      * Crea un trámite después de consultar catalog: 400 si el tipo no existe o está inactivo, 503 si catalog no responde, y en esos casos requests no se llama.
      * El label viaja en {@code X-Procedure-Label} para el snapshot; si catalog no trae label, no se manda.
      */
-    @PostMapping
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> create(
             @Valid @RequestBody CreateRequestDto body,
             @AuthenticationPrincipal Jwt jwt
+    ) {
+        return create(body, null, jwt);
+    }
+
+    /** Crea un trámite con una sola imagen opcional, reenviada por el canal privado a requests. */
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> createWithAttachment(
+            @Valid @RequestPart("request") CreateRequestDto body,
+            @RequestPart(value = "attachment", required = false) MultipartFile attachment,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return create(body, attachment, jwt);
+    }
+
+    private ResponseEntity<Map<String, Object>> create(
+            CreateRequestDto body,
+            MultipartFile attachment,
+            Jwt jwt
     ) {
         String procedureLabel = procedureTypeValidator.requireActive(body.procedureType());
 
@@ -67,6 +88,26 @@ public class RequestsController {
         payload.put("description", body.description());
         payload.put("procedureType", body.procedureType());
         payload.put("address", body.address());
+        putIfPresent(payload, "sector", body.sector());
+        putIfPresent(payload, "locationReference", body.locationReference());
+        if (body.latitude() != null) {
+            payload.put("latitude", body.latitude());
+        }
+        if (body.longitude() != null) {
+            payload.put("longitude", body.longitude());
+        }
+        putIfPresent(payload, "locationPrecision", body.locationPrecision());
+        if (attachment != null) {
+            return requestsProxyService.createWithAttachment(
+                    payload,
+                    attachment,
+                    resolveUserId(jwt),
+                    resolveRoles(jwt),
+                    resolveUserName(jwt),
+                    resolveUserEmail(jwt),
+                    encodeProcedureLabel(procedureLabel)
+            );
+        }
         return requestsProxyService.create(
                 payload,
                 resolveUserId(jwt),
@@ -88,6 +129,13 @@ public class RequestsController {
         return UriUtils.encode(label, StandardCharsets.UTF_8);
     }
 
+    /** No reenvía un texto vacío: requests trata la ausencia como “no indicado”. */
+    private static void putIfPresent(Map<String, Object> payload, String key, String value) {
+        if (value != null && !value.isBlank()) {
+            payload.put(key, value.trim());
+        }
+    }
+
     /** Devuelve los cambios de estado permitidos. */
     @GetMapping("/meta/transitions")
     public ResponseEntity<Map<String, List<String>>> transitions() {
@@ -101,6 +149,15 @@ public class RequestsController {
             @AuthenticationPrincipal Jwt jwt
     ) {
         return requestsProxyService.getById(id, resolveUserId(jwt), resolveRoles(jwt));
+    }
+
+    /** Descarga la imagen sin exponerla públicamente; requests vuelve a comprobar acceso al trámite. */
+    @GetMapping("/{id}/attachment")
+    public ResponseEntity<byte[]> getAttachment(
+            @PathVariable String id,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return requestsProxyService.getAttachment(id, resolveUserId(jwt), resolveRoles(jwt));
     }
 
     /** Lista trámites. Puede filtrar por estado y por fechas. El id de usuario y los roles salen del JWT. */
