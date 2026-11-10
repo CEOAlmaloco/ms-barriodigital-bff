@@ -45,8 +45,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * El POST reenvía el label del tipo según catalog en X-Procedure-Label, codificado en URL (UTF-8).
- * Si catalog no trae label, el header no sale. El body no se toca.
+ * El POST reenvía el label del tipo según catalog en X-Procedure-Label, codificado en URL (UTF-8),
+ * y el plazo en X-Procedure-Sla-Days si catalog trae slaBusinessDays.
+ * Si catalog no trae label o plazo, ese header no sale. El body no se toca.
  */
 @SpringBootTest(properties = {
         "barriodigital.security.jwt.entra-decoder=false",
@@ -132,6 +133,60 @@ class RequestCreateProcedureLabelForwardTest {
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(header("X-User-Id", "oid-1"))
                 .andExpect(headerDoesNotExist("X-Procedure-Label"))
+                .andExpect(headerDoesNotExist("X-Procedure-Sla-Days"))
+                .andRespond(withStatus(HttpStatus.CREATED)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"id\":\"abc\"}"));
+
+        mockMvc.perform(post("/api/requests")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"description":"Hueco","procedureType":"bache","address":"Calle 1"}
+                                """)
+                        .with(vecino()))
+                .andExpect(status().isCreated());
+
+        RequestsClientStub.server.verify();
+    }
+
+    @Test
+    void postReenviaElPlazoEnXProcedureSlaDays() throws Exception {
+        when(catalogProxyService.procedures()).thenReturn(List.of(
+                Map.of("value", "bache", "label", "Bache en calle", "active", true, "slaBusinessDays", 5)
+        ));
+        RequestsClientStub.server.expect(requestTo("http://requests-test/api/requests"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("X-User-Id", "oid-1"))
+                .andExpect(header("X-Procedure-Label", "Bache%20en%20calle"))
+                .andExpect(header("X-Procedure-Sla-Days", "5"))
+                .andExpect(content().string(not(containsString("slaBusinessDays"))))
+                .andRespond(withStatus(HttpStatus.CREATED)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"id\":\"abc\",\"status\":\"INGRESADO\"}"));
+
+        mockMvc.perform(post("/api/requests")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"description":"Hueco","procedureType":"bache","address":"Calle 1"}
+                                """)
+                        .with(vecino()))
+                .andExpect(status().isCreated());
+
+        RequestsClientStub.server.verify();
+    }
+
+    @Test
+    void postSinPlazoEnCatalogNoMandaXProcedureSlaDays() throws Exception {
+        Map<String, Object> sinPlazo = new HashMap<>();
+        sinPlazo.put("value", "bache");
+        sinPlazo.put("label", "Bache en calle");
+        sinPlazo.put("active", true);
+        sinPlazo.put("slaBusinessDays", null);
+        when(catalogProxyService.procedures()).thenReturn(List.of(sinPlazo));
+        RequestsClientStub.server.expect(requestTo("http://requests-test/api/requests"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("X-Procedure-Label", "Bache%20en%20calle"))
+                .andExpect(headerDoesNotExist("X-Procedure-Sla-Days"))
                 .andRespond(withStatus(HttpStatus.CREATED)
                         .contentType(MediaType.APPLICATION_JSON)
                         .body("{\"id\":\"abc\"}"));

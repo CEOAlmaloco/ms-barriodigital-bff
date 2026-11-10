@@ -24,7 +24,7 @@ import java.util.Optional;
 
 /**
  * Reenvía los trámites a requests.
- * Manda {@code X-User-Id} y {@code X-User-Roles} tomados del JWT, nunca del body. {@code X-User-Name}, {@code X-User-Email} y {@code X-Procedure-Label} solo van en el alta, como snapshot que requests guarda al crear.
+ * Manda {@code X-User-Id} y {@code X-User-Roles} tomados del JWT, nunca del body. {@code X-User-Name}, {@code X-User-Email}, {@code X-Procedure-Label} y {@code X-Procedure-Sla-Days} solo van en el alta, como snapshot que requests guarda al crear.
  */
 @Service
 public class RequestsProxyService {
@@ -35,6 +35,8 @@ public class RequestsProxyService {
     public static final String HEADER_USER_EMAIL = "X-User-Email";
     /** Ya viene codificado en URL (UTF-8) desde el controller. */
     public static final String HEADER_PROCEDURE_LABEL = "X-Procedure-Label";
+    /** Días hábiles del tipo; solo si catalog trae plazo. */
+    public static final String HEADER_PROCEDURE_SLA_DAYS = "X-Procedure-Sla-Days";
 
     private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE =
             new ParameterizedTypeReference<>() {};
@@ -50,14 +52,15 @@ public class RequestsProxyService {
         this.requestsRestClient = requestsRestClient;
     }
 
-    /** Crea el trámite y manda también nombre, correo y, si viene, el label del tipo. */
+    /** Crea el trámite y manda también nombre, correo y, si vienen, label y plazo del tipo. */
     public ResponseEntity<Map<String, Object>> create(
             Map<String, Object> body,
             String userId,
             String roles,
             String userName,
             String userEmail,
-            String procedureLabel
+            String procedureLabel,
+            Integer procedureSlaDays
     ) {
         RequestBodySpec spec = requestsRestClient.post()
                 .uri("/api/requests")
@@ -66,7 +69,7 @@ public class RequestsProxyService {
                 .header(HEADER_USER_ROLES, nullToEmpty(roles))
                 .header(HEADER_USER_NAME, nullToEmpty(userName))
                 .header(HEADER_USER_EMAIL, nullToEmpty(userEmail));
-        return withProcedureLabel(spec, procedureLabel)
+        return withProcedureSnapshot(spec, procedureLabel, procedureSlaDays)
                 .body(body)
                 .exchange((request, response) -> ResponseEntity
                         .status(response.getStatusCode())
@@ -82,7 +85,8 @@ public class RequestsProxyService {
             String roles,
             String userName,
             String userEmail,
-            String procedureLabel
+            String procedureLabel,
+            Integer procedureSlaDays
     ) {
         byte[] content;
         try {
@@ -112,7 +116,7 @@ public class RequestsProxyService {
                 .header(HEADER_USER_ROLES, nullToEmpty(roles))
                 .header(HEADER_USER_NAME, nullToEmpty(userName))
                 .header(HEADER_USER_EMAIL, nullToEmpty(userEmail));
-        return withProcedureLabel(spec, procedureLabel)
+        return withProcedureSnapshot(spec, procedureLabel, procedureSlaDays)
                 .body(parts)
                 .exchange((request, response) -> ResponseEntity
                         .status(response.getStatusCode())
@@ -318,12 +322,22 @@ public class RequestsProxyService {
         return spec.body(body);
     }
 
-    /** Agrega {@code X-Procedure-Label} solo si viene. Si no, omite el header en lugar de mandarlo vacío. */
-    private static RequestBodySpec withProcedureLabel(RequestBodySpec spec, String procedureLabel) {
-        if (procedureLabel == null || procedureLabel.isBlank()) {
-            return spec;
+    /**
+     * Agrega label y plazo solo si vienen.
+     * Sin valor omite el header en lugar de mandarlo vacío.
+     */
+    private static RequestBodySpec withProcedureSnapshot(
+            RequestBodySpec spec,
+            String procedureLabel,
+            Integer procedureSlaDays
+    ) {
+        if (procedureLabel != null && !procedureLabel.isBlank()) {
+            spec = spec.header(HEADER_PROCEDURE_LABEL, procedureLabel);
         }
-        return spec.header(HEADER_PROCEDURE_LABEL, procedureLabel);
+        if (procedureSlaDays != null) {
+            spec = spec.header(HEADER_PROCEDURE_SLA_DAYS, String.valueOf(procedureSlaDays));
+        }
+        return spec;
     }
 
     /** Si la respuesta no indica el tipo, asume JSON. */

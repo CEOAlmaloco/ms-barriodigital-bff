@@ -27,7 +27,10 @@ class ProcedureTypeValidatorTest {
                 Map.of("value", "bache", "label", "Bache en calle", "active", true)
         ));
 
-        assertEquals("Bache en calle", validator.requireActive(" Bache "));
+        ProcedureTypeValidator.TypeSnapshot snapshot = validator.requireActive(" Bache ");
+
+        assertEquals("Bache en calle", snapshot.label());
+        assertNull(snapshot.slaBusinessDays());
     }
 
     @Test
@@ -36,7 +39,19 @@ class ProcedureTypeValidatorTest {
                 Map.of("value", "alumbrado", "label", "  Alumbrado público  ", "active", true)
         ));
 
-        assertEquals("Alumbrado público", validator.requireActive("alumbrado"));
+        assertEquals("Alumbrado público", validator.requireActive("alumbrado").label());
+    }
+
+    @Test
+    void tipoActivoConPlazoDevuelveSlaBusinessDays() {
+        when(catalogProxyService.procedures()).thenReturn(List.of(
+                Map.of("value", "bache", "label", "Bache en calle", "active", true, "slaBusinessDays", 5)
+        ));
+
+        ProcedureTypeValidator.TypeSnapshot snapshot = validator.requireActive("bache");
+
+        assertEquals("Bache en calle", snapshot.label());
+        assertEquals(5, snapshot.slaBusinessDays());
     }
 
     @Test
@@ -49,8 +64,8 @@ class ProcedureTypeValidatorTest {
                 Map.of("value", "ruido", "label", "   ", "active", true)
         ));
 
-        assertNull(validator.requireActive("agua"));
-        assertNull(validator.requireActive("ruido"));
+        assertNull(validator.requireActive("agua").label());
+        assertNull(validator.requireActive("ruido").label());
     }
 
     @Test
