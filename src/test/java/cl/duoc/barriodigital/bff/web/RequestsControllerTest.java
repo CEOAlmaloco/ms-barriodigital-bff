@@ -21,6 +21,7 @@ import java.util.Map;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -56,7 +57,7 @@ class RequestsControllerTest {
     void postCreaSinTitleEnBody() throws Exception {
         when(catalogProxyService.procedures()).thenReturn(CATALOG);
         when(requestsProxyService.create(anyMap(), eq("dev-user"), eq("Vecino"), eq("dev-user"), eq(""),
-                eq("Bache%20en%20calle")))
+                eq("Bache%20en%20calle"), isNull()))
                 .thenReturn(ResponseEntity.status(HttpStatus.CREATED)
                         .body(Map.of("id", "uuid-1", "status", "INGRESADO", "title", "Bache en calle — Calle 1")));
 
@@ -73,7 +74,7 @@ class RequestsControllerTest {
     void postConTipoActivoReenviaElBodySinTocarlo() throws Exception {
         when(catalogProxyService.procedures()).thenReturn(CATALOG);
         when(requestsProxyService.create(anyMap(), eq("dev-user"), eq("Vecino"), eq("dev-user"), eq(""),
-                eq("Bache%20en%20calle")))
+                eq("Bache%20en%20calle"), isNull()))
                 .thenReturn(ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", "uuid-2")));
 
         mockMvc.perform(post("/api/requests")
@@ -90,7 +91,8 @@ class RequestsControllerTest {
                 eq("Vecino"),
                 eq("dev-user"),
                 eq(""),
-                eq("Bache%20en%20calle")
+                eq("Bache%20en%20calle"),
+                isNull()
         );
     }
 
@@ -98,7 +100,7 @@ class RequestsControllerTest {
     void postMultipartValidaElCatalogoYReenviaLaImagen() throws Exception {
         when(catalogProxyService.procedures()).thenReturn(CATALOG);
         when(requestsProxyService.createWithAttachment(
-                anyMap(), any(), eq("dev-user"), eq("Vecino"), eq("dev-user"), eq(""), eq("Bache%20en%20calle")))
+                anyMap(), any(), eq("dev-user"), eq("Vecino"), eq("dev-user"), eq(""), eq("Bache%20en%20calle"), isNull()))
                 .thenReturn(ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", "uuid-attachment")));
 
         MockMultipartFile request = new MockMultipartFile(
@@ -127,14 +129,15 @@ class RequestsControllerTest {
                 eq("Vecino"),
                 eq("dev-user"),
                 eq(""),
-                eq("Bache%20en%20calle")
+                eq("Bache%20en%20calle"),
+                isNull()
         );
     }
 
     @Test
     void postConUbicacionReenviaSectorReferenciaYCoordenadas() throws Exception {
         when(catalogProxyService.procedures()).thenReturn(CATALOG);
-        when(requestsProxyService.create(anyMap(), any(), any(), any(), any(), any()))
+        when(requestsProxyService.create(anyMap(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", "uuid-ubicacion")));
 
         mockMvc.perform(post("/api/requests")
@@ -161,7 +164,8 @@ class RequestsControllerTest {
                 eq("Vecino"),
                 eq("dev-user"),
                 eq(""),
-                eq("Bache%20en%20calle")
+                eq("Bache%20en%20calle"),
+                isNull()
         );
     }
 
@@ -205,7 +209,7 @@ class RequestsControllerTest {
                         {"status":400,"error":"Bad Request","message":"procedureType invalido","path":"/api/requests"}
                         """, true));
 
-        verify(requestsProxyService, never()).create(anyMap(), any(), any(), any(), any(), any());
+        verify(requestsProxyService, never()).create(anyMap(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -222,7 +226,7 @@ class RequestsControllerTest {
                         {"status":400,"error":"Bad Request","message":"El tipo de tramite no esta disponible","path":"/api/requests"}
                         """, true));
 
-        verify(requestsProxyService, never()).create(anyMap(), any(), any(), any(), any(), any());
+        verify(requestsProxyService, never()).create(anyMap(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -242,7 +246,7 @@ class RequestsControllerTest {
                         {"status":503,"error":"Service Unavailable","message":"El catalogo de tipos de tramite no esta disponible. Intenta nuevamente en unos minutos.","path":"/api/requests"}
                         """, true));
 
-        verify(requestsProxyService, never()).create(anyMap(), any(), any(), any(), any(), any());
+        verify(requestsProxyService, never()).create(anyMap(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -255,7 +259,7 @@ class RequestsControllerTest {
                 .andExpect(status().isBadRequest());
 
         verify(catalogProxyService, never()).procedures();
-        verify(requestsProxyService, never()).create(anyMap(), any(), any(), any(), any(), any());
+        verify(requestsProxyService, never()).create(anyMap(), any(), any(), any(), any(), any(), any());
     }
 
     @Test

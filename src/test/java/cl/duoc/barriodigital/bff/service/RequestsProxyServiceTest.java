@@ -119,7 +119,8 @@ class RequestsProxyServiceTest {
                 "Vecino",
                 "Alex%20Ampuero",
                 "vecino@example.com",
-                "Bache%20en%20calle"
+                "Bache%20en%20calle",
+                null
         );
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
@@ -132,6 +133,7 @@ class RequestsProxyServiceTest {
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(header("X-User-Id", "oid-1"))
                 .andExpect(headerDoesNotExist("X-Procedure-Label"))
+                .andExpect(headerDoesNotExist("X-Procedure-Sla-Days"))
                 .andRespond(withStatus(HttpStatus.CREATED)
                         .contentType(MediaType.APPLICATION_JSON)
                         .body("{\"id\":\"abc\"}"));
@@ -142,7 +144,31 @@ class RequestsProxyServiceTest {
                 "Vecino",
                 "Alex Ampuero",
                 "vecino@example.com",
+                null,
                 null
+        );
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        server.verify();
+    }
+
+    @Test
+    void createConPlazoMandaXProcedureSlaDays() {
+        server.expect(requestTo("http://requests-test/api/requests"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("X-Procedure-Sla-Days", "5"))
+                .andRespond(withStatus(HttpStatus.CREATED)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"id\":\"abc\"}"));
+
+        ResponseEntity<Map<String, Object>> response = service.create(
+                Map.of("description", "Hueco", "procedureType", "bache", "address", "Calle 1"),
+                "oid-1",
+                "Vecino",
+                "Alex",
+                "vecino@example.com",
+                "Bache",
+                5
         );
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
@@ -178,7 +204,8 @@ class RequestsProxyServiceTest {
                 "Vecino",
                 "Alex Ampuero",
                 "vecino@example.com",
-                "Bache%20en%20calle"
+                "Bache%20en%20calle",
+                null
         );
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());

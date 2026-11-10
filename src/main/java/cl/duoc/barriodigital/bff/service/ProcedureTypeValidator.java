@@ -19,6 +19,13 @@ public class ProcedureTypeValidator {
     public static final String UNKNOWN_TYPE = "procedureType invalido";
     public static final String INACTIVE_TYPE = "El tipo de tramite no esta disponible";
 
+    /**
+     * Datos del tipo activo para el snapshot del alta.
+     * {@code label} o {@code slaBusinessDays} pueden ser null si catalog no los trae.
+     */
+    public record TypeSnapshot(String label, Integer slaBusinessDays) {
+    }
+
     private final CatalogProxyService catalogProxyService;
 
     /** Recibe el proxy de catalog. */
@@ -27,10 +34,10 @@ public class ProcedureTypeValidator {
     }
 
     /**
-     * Busca el tipo y devuelve su label recortado, para el snapshot que requests guarda.
-     * Si no existe o no está activo, responde 400. Si catalog no trae label, o el código viene vacío, devuelve null.
+     * Busca el tipo y devuelve label y plazo para el snapshot que requests guarda.
+     * Si no existe o no está activo, responde 400. Si el código viene vacío, devuelve null.
      */
-    public String requireActive(String rawProcedureType) {
+    public TypeSnapshot requireActive(String rawProcedureType) {
         if (rawProcedureType == null || rawProcedureType.isBlank()) {
             return null;
         }
@@ -45,6 +52,18 @@ public class ProcedureTypeValidator {
         if (!Boolean.TRUE.equals(found.get("active"))) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, INACTIVE_TYPE);
         }
-        return found.get("label") instanceof String label && !label.isBlank() ? label.trim() : null;
+        String label = found.get("label") instanceof String text && !text.isBlank() ? text.trim() : null;
+        return new TypeSnapshot(label, readSlaBusinessDays(found.get("slaBusinessDays")));
+    }
+
+    /** Lee el plazo solo si catalog mandó un número entero; si no, el tipo queda sin plazo. */
+    private static Integer readSlaBusinessDays(Object raw) {
+        if (raw instanceof Integer value) {
+            return value;
+        }
+        if (raw instanceof Number value) {
+            return value.intValue();
+        }
+        return null;
     }
 }

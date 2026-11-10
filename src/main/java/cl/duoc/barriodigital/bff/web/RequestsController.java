@@ -55,7 +55,7 @@ public class RequestsController {
 
     /**
      * Crea un trámite después de consultar catalog: 400 si el tipo no existe o está inactivo, 503 si catalog no responde, y en esos casos requests no se llama.
-     * El label viaja en {@code X-Procedure-Label} para el snapshot; si catalog no trae label, no se manda.
+     * Label y plazo viajan en {@code X-Procedure-Label} y {@code X-Procedure-Sla-Days}; si catalog no los trae, no se mandan.
      */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> create(
@@ -80,7 +80,9 @@ public class RequestsController {
             MultipartFile attachment,
             Jwt jwt
     ) {
-        String procedureLabel = procedureTypeValidator.requireActive(body.procedureType());
+        ProcedureTypeValidator.TypeSnapshot type = procedureTypeValidator.requireActive(body.procedureType());
+        String procedureLabel = type == null ? null : type.label();
+        Integer procedureSlaDays = type == null ? null : type.slaBusinessDays();
 
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("description", body.description());
@@ -103,7 +105,8 @@ public class RequestsController {
                     resolveRoles(jwt),
                     resolveUserName(jwt),
                     resolveUserEmail(jwt),
-                    encodeProcedureLabel(procedureLabel)
+                    encodeProcedureLabel(procedureLabel),
+                    procedureSlaDays
             );
         }
         return requestsProxyService.create(
@@ -112,7 +115,8 @@ public class RequestsController {
                 resolveRoles(jwt),
                 encodeUserName(resolveUserName(jwt)),
                 resolveUserEmail(jwt),
-                encodeProcedureLabel(procedureLabel)
+                encodeProcedureLabel(procedureLabel),
+                procedureSlaDays
         );
     }
 
