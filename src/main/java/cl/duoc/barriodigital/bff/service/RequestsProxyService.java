@@ -40,10 +40,11 @@ public class RequestsProxyService {
 
     private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE =
             new ParameterizedTypeReference<>() {};
-    private static final ParameterizedTypeReference<List<Map<String, Object>>> LIST_TYPE =
+    private static final ParameterizedTypeReference<Object> PAGE_TYPE =
             new ParameterizedTypeReference<>() {};
     private static final ParameterizedTypeReference<Map<String, List<String>>> TRANSITIONS_TYPE =
             new ParameterizedTypeReference<>() {};
+
 
     private final RestClient requestsRestClient;
 
@@ -169,11 +170,22 @@ public class RequestsProxyService {
                 });
     }
 
-    /** Pide el listado. Si vienen estado o fechas, los manda como query. */
-    public ResponseEntity<List<Map<String, Object>>> list(
+    /**
+     * Listado paginado (EP3-30): reenvía page, size, sort, q y filtros.
+     * La respuesta es el objeto paginado de requests (content, page, size, totalElements, totalPages).
+     */
+    public ResponseEntity<Object> list(
             String status,
             String from,
             String to,
+            String page,
+            String size,
+            String sort,
+            String q,
+            String procedureType,
+            String sector,
+            String assignee,
+            String open,
             String userId,
             String roles
     ) {
@@ -181,6 +193,14 @@ public class RequestsProxyService {
                 .queryParamIfPresent("status", Optional.ofNullable(blankToNull(status)))
                 .queryParamIfPresent("from", Optional.ofNullable(blankToNull(from)))
                 .queryParamIfPresent("to", Optional.ofNullable(blankToNull(to)))
+                .queryParamIfPresent("page", Optional.ofNullable(blankToNull(page)))
+                .queryParamIfPresent("size", Optional.ofNullable(blankToNull(size)))
+                .queryParamIfPresent("sort", Optional.ofNullable(blankToNull(sort)))
+                .queryParamIfPresent("q", Optional.ofNullable(blankToNull(q)))
+                .queryParamIfPresent("procedureType", Optional.ofNullable(blankToNull(procedureType)))
+                .queryParamIfPresent("sector", Optional.ofNullable(blankToNull(sector)))
+                .queryParamIfPresent("assignee", Optional.ofNullable(blankToNull(assignee)))
+                .queryParamIfPresent("open", Optional.ofNullable(blankToNull(open)))
                 .build(true)
                 .toUriString();
 
@@ -191,7 +211,52 @@ public class RequestsProxyService {
                 .exchange((request, response) -> ResponseEntity
                         .status(response.getStatusCode())
                         .contentType(resolveContentType(response.getHeaders().getContentType()))
-                        .body(response.bodyTo(LIST_TYPE)));
+                        .body(response.bodyTo(PAGE_TYPE)));
+    }
+
+    /** Toma un trámite sin responsable (EP3-05). */
+    public ResponseEntity<Map<String, Object>> take(String id, String userId, String roles, String userName) {
+        RequestBodySpec spec = requestsRestClient.post()
+                .uri("/api/requests/{id}/take", id)
+                .header(HEADER_USER_ID, userId)
+                .header(HEADER_USER_ROLES, nullToEmpty(roles));
+        if (userName != null && !userName.isBlank()) {
+            spec = spec.header(HEADER_USER_NAME, userName.trim());
+        }
+        return spec.exchange((request, response) -> ResponseEntity
+                .status(response.getStatusCode())
+                .contentType(resolveContentType(response.getHeaders().getContentType()))
+                .body(response.bodyTo(MAP_TYPE)));
+    }
+
+    /** Asigna o reasigna (EP3-05). */
+    public ResponseEntity<Map<String, Object>> assign(
+            String id, Map<String, Object> body, String userId, String roles, String userName
+    ) {
+        RequestBodySpec spec = requestsRestClient.put()
+                .uri("/api/requests/{id}/assignee", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HEADER_USER_ID, userId)
+                .header(HEADER_USER_ROLES, nullToEmpty(roles));
+        if (userName != null && !userName.isBlank()) {
+            spec = spec.header(HEADER_USER_NAME, userName.trim());
+        }
+        return spec.body(body).exchange((request, response) -> ResponseEntity
+                .status(response.getStatusCode())
+                .contentType(resolveContentType(response.getHeaders().getContentType()))
+                .body(response.bodyTo(MAP_TYPE)));
+    }
+
+    /** Lista funcionarios asignables (EP3-05). */
+    public ResponseEntity<Object> assignees(String userId, String roles) {
+        return requestsRestClient.get()
+                .uri("/api/requests/assignees")
+                .header(HEADER_USER_ID, userId)
+                .header(HEADER_USER_ROLES, nullToEmpty(roles))
+                .exchange((request, response) -> ResponseEntity
+                        .status(response.getStatusCode())
+                        .contentType(resolveContentType(response.getHeaders().getContentType()))
+                        .body(response.bodyTo(PAGE_TYPE)));
     }
 
     /**

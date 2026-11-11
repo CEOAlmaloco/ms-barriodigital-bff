@@ -54,7 +54,8 @@ class RequestStatusAuthorizationTest {
     @Test
     void funcionarioCambiaEstado200() throws Exception {
         when(requestsProxyService.getById("id-1", "func-1", "Funcionario"))
-                .thenReturn(ResponseEntity.ok(Map.of("id", "id-1", "procedureType", "bache")));
+                .thenReturn(ResponseEntity.ok(Map.of(
+                        "id", "id-1", "procedureType", "bache", "assigneeId", "func-1")));
         when(catalogProxyService.reserve("bache")).thenReturn(org.springframework.http.HttpStatus.OK);
         when(requestsProxyService.updateStatusForAdmission(eq("id-1"), anyMap(), any(), any()))
                 .thenReturn(new RequestsProxyService.StatusChangeResult(
@@ -88,17 +89,69 @@ class RequestStatusAuthorizationTest {
     }
 
     @Test
-    void adminResponde403() throws Exception {
+    void adminSinMotivoResponde400SinReservar() throws Exception {
         mockMvc.perform(put("/api/requests/id-1/status")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"ADMITIDO\"}")
                         .with(jwt()
-                                .jwt(j -> j.claim("roles", List.of("Admin")))
+                                .jwt(j -> j.claim("oid", "admin-1").claim("roles", List.of("Admin")))
                                 .authorities(new SimpleGrantedAuthority("ROLE_Admin"))))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(
+                        cl.duoc.barriodigital.bff.service.RequestStatusOrchestrationService.MSG_ADMIN_INTERVENTION));
 
-        verify(requestsProxyService, never()).updateStatus(anyString(), anyMap(), any(), any());
+        verify(requestsProxyService, never()).getById(anyString(), any(), any());
         org.mockito.Mockito.verifyNoInteractions(catalogProxyService);
+    }
+
+    @Test
+    void adminConMotivoAdmite200() throws Exception {
+        when(requestsProxyService.getById("id-1", "admin-1", "Admin"))
+                .thenReturn(ResponseEntity.ok(Map.of("id", "id-1", "procedureType", "bache")));
+        when(catalogProxyService.reserve("bache")).thenReturn(org.springframework.http.HttpStatus.OK);
+        when(requestsProxyService.updateStatusForAdmission(eq("id-1"), anyMap(), any(), any()))
+                .thenReturn(new RequestsProxyService.StatusChangeResult(
+                        ResponseEntity.ok(Map.of("id", "id-1", "status", "ADMITIDO")), true));
+
+        mockMvc.perform(put("/api/requests/id-1/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"ADMITIDO\",\"interventionReason\":\"Prioridad\"}")
+                        .with(jwt()
+                                .jwt(j -> j.claim("oid", "admin-1").claim("roles", List.of("Admin")))
+                                .authorities(new SimpleGrantedAuthority("ROLE_Admin"))))
+                .andExpect(status().isOk());
+
+        verify(catalogProxyService).reserve("bache");
+    }
+
+    @Test
+    void sinRolResponde403() throws Exception {
+        mockMvc.perform(put("/api/requests/id-1/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"ADMITIDO\"}")
+                        .with(jwt()
+                                .jwt(j -> j.claim("oid", "x").claim("roles", List.of()))
+                                .authorities()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value(
+                        cl.duoc.barriodigital.bff.config.BarrioRoleGateFilter.MSG_NO_ROLE));
+        org.mockito.Mockito.verifyNoInteractions(requestsProxyService, catalogProxyService);
+    }
+
+    @Test
+    void conMasDeUnRolResponde403() throws Exception {
+        mockMvc.perform(put("/api/requests/id-1/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"ADMITIDO\"}")
+                        .with(jwt()
+                                .jwt(j -> j.claim("oid", "x").claim("roles", List.of("Admin", "Funcionario")))
+                                .authorities(
+                                        new SimpleGrantedAuthority("ROLE_Admin"),
+                                        new SimpleGrantedAuthority("ROLE_Funcionario"))))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value(
+                        cl.duoc.barriodigital.bff.config.BarrioRoleGateFilter.MSG_MULTI_ROLE));
+        org.mockito.Mockito.verifyNoInteractions(requestsProxyService, catalogProxyService);
     }
 
     @Test
@@ -113,7 +166,8 @@ class RequestStatusAuthorizationTest {
     @Test
     void propagaElRolSingularQueAceptoElConverter() throws Exception {
         when(requestsProxyService.getById("id-1", "func-1", "Funcionario"))
-                .thenReturn(ResponseEntity.ok(Map.of("id", "id-1", "procedureType", "bache")));
+                .thenReturn(ResponseEntity.ok(Map.of(
+                        "id", "id-1", "procedureType", "bache", "assigneeId", "func-1")));
         when(catalogProxyService.reserve("bache")).thenReturn(org.springframework.http.HttpStatus.CONFLICT);
         mockMvc.perform(put("/api/requests/id-1/status")
                         .contentType(MediaType.APPLICATION_JSON)

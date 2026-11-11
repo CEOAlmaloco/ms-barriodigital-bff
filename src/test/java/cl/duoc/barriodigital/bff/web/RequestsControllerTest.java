@@ -276,21 +276,44 @@ class RequestsControllerTest {
     }
 
     @Test
-    void getListaConFecha() throws Exception {
+    void getListaPaginadaReenviaFiltros() throws Exception {
         when(requestsProxyService.list(
                 eq("INGRESADO"),
                 eq("2026-09-01"),
                 eq("2026-09-13"),
+                eq("0"),
+                eq("20"),
+                eq("createdAt,desc"),
+                eq("folio"),
+                eq("bache"),
+                eq("norte"),
+                eq("me"),
+                eq("true"),
                 eq("dev-user"),
                 eq("Vecino")
-        )).thenReturn(ResponseEntity.ok(List.of(Map.of("id", "1"))));
+        )).thenReturn(ResponseEntity.ok(Map.of(
+                "content", List.of(Map.of("id", "1")),
+                "page", 0,
+                "size", 20,
+                "totalElements", 1,
+                "totalPages", 1
+        )));
 
         mockMvc.perform(get("/api/requests")
                         .param("status", "INGRESADO")
                         .param("from", "2026-09-01")
-                        .param("to", "2026-09-13"))
+                        .param("to", "2026-09-13")
+                        .param("page", "0")
+                        .param("size", "20")
+                        .param("sort", "createdAt,desc")
+                        .param("q", "folio")
+                        .param("procedureType", "bache")
+                        .param("sector", "norte")
+                        .param("assignee", "me")
+                        .param("open", "true"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value("1"));
+                .andExpect(jsonPath("$.content[0].id").value("1"))
+                .andExpect(jsonPath("$.totalElements").value(1));
     }
 
     @Test
