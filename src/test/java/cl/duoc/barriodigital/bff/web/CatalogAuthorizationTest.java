@@ -88,11 +88,12 @@ class CatalogAuthorizationTest {
                         .content("{\"label\":\"Bache grave\",\"active\":false,\"dailyQuota\":4}"))
                 .andExpect(status().isForbidden());
 
-        verify(catalogProxyService, never()).create(anyMap(), any(CatalogCaller.Identity.class));
+        verify(catalogProxyService, never()).create(anyMap(), any(CatalogCaller.Identity.class), any());
         verify(catalogProxyService, never()).update(
                 anyString(),
                 anyMap(),
-                any(CatalogCaller.Identity.class)
+                any(CatalogCaller.Identity.class),
+                any()
         );
     }
 
@@ -100,10 +101,10 @@ class CatalogAuthorizationTest {
     void adminCreaYEditaYElProxyRecibeLaIdentidadDelToken() throws Exception {
         CatalogCaller.Identity identity = new CatalogCaller.Identity(
                 "admin-1", "Admin", "Admin%20%C3%91and%C3%BA");
-        when(catalogProxyService.create(anyMap(), eq(identity))).thenReturn(ResponseEntity
+        when(catalogProxyService.create(anyMap(), eq(identity), any())).thenReturn(ResponseEntity
                 .status(201)
                 .body(Map.of("value", "semaforo", "label", "Semáforo")));
-        when(catalogProxyService.update(eq("bache"), anyMap(), eq(identity))).thenReturn(ResponseEntity.ok(
+        when(catalogProxyService.update(eq("bache"), anyMap(), eq(identity), any())).thenReturn(ResponseEntity.ok(
                 Map.of("value", "bache", "label", "Bache grave")
         ));
 
@@ -121,8 +122,8 @@ class CatalogAuthorizationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.value").value("bache"));
 
-        verify(catalogProxyService).create(anyMap(), eq(identity));
-        verify(catalogProxyService).update(eq("bache"), anyMap(), eq(identity));
+        verify(catalogProxyService).create(anyMap(), eq(identity), any());
+        verify(catalogProxyService).update(eq("bache"), anyMap(), eq(identity), any());
     }
 
     private static RequestPostProcessor admin() {
