@@ -29,11 +29,45 @@ class RequestStatusOrchestrationServiceTest {
     private final Map<String, Object> payload = Map.of("status", " ADMITIDO ", "procedureType", "tipo-del-cliente");
 
     @ParameterizedTest
-    @ValueSource(strings = {"Vecino", "Admin", "", "Auditor"})
+    @ValueSource(strings = {"Vecino", "", "Auditor"})
     void sinPermisoNoConsultaNiReserva(String roles) {
         assertEquals(403, assertThrows(ResponseStatusException.class,
                 () -> service.updateStatus("id-1", payload, "func-1", roles)).getStatusCode().value());
         verifyNoInteractions(requests, catalog);
+    }
+
+    @Test
+    void adminSinInterventionReasonNoConsultaNiReserva() {
+        assertEquals(400, assertThrows(ResponseStatusException.class,
+                () -> service.updateStatus("id-1", payload, "admin-1", "Admin")).getStatusCode().value());
+        verifyNoInteractions(requests, catalog);
+    }
+
+    @Test
+    void funcionarioNoResponsableNoReserva() {
+        when(requests.getById("id-1", "func-1", "Funcionario"))
+                .thenReturn(ResponseEntity.ok(Map.of(
+                        "id", "id-1",
+                        "procedureType", "bache",
+                        "assigneeId", "otro-func")));
+        assertEquals(403, assertThrows(ResponseStatusException.class, this::call).getStatusCode().value());
+        verify(requests).getById("id-1", "func-1", "Funcionario");
+        verifyNoInteractions(catalog);
+    }
+
+    @Test
+    void adminConMotivoAdmite() {
+        Map<String, Object> adminPayload = Map.of(
+                "status", "ADMITIDO",
+                "interventionReason", "Prioridad comunal");
+        when(requests.getById("id-1", "admin-1", "Admin"))
+                .thenReturn(ResponseEntity.ok(Map.of("id", "id-1", "procedureType", "bache")));
+        when(catalog.reserve("bache")).thenReturn(HttpStatus.OK);
+        var response = ResponseEntity.<Map<String, Object>>ok(Map.of("id", "id-1", "status", "ADMITIDO"));
+        when(requests.updateStatusForAdmission("id-1", adminPayload, "admin-1", "Admin"))
+                .thenReturn(new RequestsProxyService.StatusChangeResult(response, true));
+        assertSame(response, service.updateStatus("id-1", adminPayload, "admin-1", "Admin"));
+        verify(catalog).reserve("bache");
     }
 
     @ParameterizedTest
@@ -202,7 +236,10 @@ class RequestStatusOrchestrationServiceTest {
 
     private void lookup() {
         when(requests.getById("id-1", "func-1", "Funcionario"))
-                .thenReturn(ResponseEntity.ok(Map.of("id", "id-1", "procedureType", "bache")));
+                .thenReturn(ResponseEntity.ok(Map.of(
+                        "id", "id-1",
+                        "procedureType", "bache",
+                        "assigneeId", "func-1")));
     }
 
     private void reserve() {

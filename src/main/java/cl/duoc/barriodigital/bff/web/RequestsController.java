@@ -3,6 +3,7 @@ package cl.duoc.barriodigital.bff.web;
 import cl.duoc.barriodigital.bff.service.ProcedureTypeValidator;
 import cl.duoc.barriodigital.bff.service.RequestsProxyService;
 import cl.duoc.barriodigital.bff.service.RequestStatusOrchestrationService;
+import cl.duoc.barriodigital.bff.web.dto.AssignRequestDto;
 import cl.duoc.barriodigital.bff.web.dto.ChangeStatusDto;
 import cl.duoc.barriodigital.bff.web.dto.CreateRequestDto;
 import jakarta.validation.Valid;
@@ -149,6 +150,12 @@ public class RequestsController {
         return requestsProxyService.transitions();
     }
 
+    /** Lista de funcionarios para asignar/reasignar (antes de {@code /{id}}). */
+    @GetMapping("/assignees")
+    public ResponseEntity<Object> assignees(@AuthenticationPrincipal Jwt jwt) {
+        return requestsProxyService.assignees(resolveUserId(jwt), resolveRoles(jwt));
+    }
+
     /** Devuelve un trámite. El id de usuario y los roles salen del JWT. */
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getById(
@@ -167,20 +174,33 @@ public class RequestsController {
         return requestsProxyService.getAttachment(id, resolveUserId(jwt), resolveRoles(jwt));
     }
 
-    /** Lista trámites. Puede filtrar por estado y por fechas. El id de usuario y los roles salen del JWT. */
+    /**
+     * Lista trámites paginados (EP3-30 / EP3-45).
+     * Reenvía page, size, sort, q y filtros; la respuesta paginada viene de requests.
+     */
     @GetMapping
-    public ResponseEntity<List<Map<String, Object>>> list(
+    public ResponseEntity<Object> list(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String from,
             @RequestParam(required = false) String to,
+            @RequestParam(required = false) String page,
+            @RequestParam(required = false) String size,
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String procedureType,
+            @RequestParam(required = false) String sector,
+            @RequestParam(required = false) String assignee,
+            @RequestParam(required = false) String open,
             @AuthenticationPrincipal Jwt jwt
     ) {
-        return requestsProxyService.list(status, from, to, resolveUserId(jwt), resolveRoles(jwt));
+        return requestsProxyService.list(
+                status, from, to, page, size, sort, q, procedureType, sector, assignee, open,
+                resolveUserId(jwt), resolveRoles(jwt));
     }
 
     /**
-     * Cambia el estado. Fuera del perfil dev, el 403 de quien no tiene rol Funcionario lo corta la seguridad y no llega aquí.
-     * Si el destino es ADMITIDO, la coordinación reserva el cupo en catalog antes de guardar el cambio.
+     * Cambia el estado. Funcionario o Admin (EP3-45).
+     * Si el destino es ADMITIDO, la coordinación valida motivo/responsable y reserva cupo.
      */
     @PutMapping("/{id}/status")
     public ResponseEntity<Map<String, Object>> updateStatus(
@@ -192,13 +212,50 @@ public class RequestsController {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("status", body.status());
         payload.put("rejectionReason", body.rejectionReason());
-        // Las autoridades son las mismas que autorizó Security, incluidos role y ROLE_*.
+        if (body.interventionReason() != null) {
+            payload.put("interventionReason", body.interventionReason());
+        }
         String roles = jwt == null ? resolveRoles(null) : authentication.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .map(role -> role.startsWith("ROLE_") ? role.substring(5) : role)
                 .collect(Collectors.joining(","));
         String name = jwt == null ? null : encodeUserName(resolveUserName(jwt));
         return statusOrchestration.updateStatus(id, payload, resolveUserId(jwt), roles, name);
+    }
+
+    /** Toma un trámite sin responsable (solo Funcionario). */
+    @PostMapping("/{id}/take")
+    public ResponseEntity<Map<String, Object>> take(
+            @PathVariable String id,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return requestsProxyService.take(
+                id,
+                resolveUserId(jwt),
+                resolveRoles(jwt),
+                encodeUserName(resolveUserName(jwt))
+        );
+    }
+
+    /** Asigna o reasigna (Admin cualquier trámite; Funcionario solo los suyos). */
+    @PutMapping("/{id}/assignee")
+    public ResponseEntity<Map<String, Object>> assign(
+            @PathVariable String id,
+            @Valid @RequestBody AssignRequestDto body,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("assigneeId", body.assigneeId());
+        if (body.reason() != null) {
+            payload.put("reason", body.reason());
+        }
+        return requestsProxyService.assign(
+                id,
+                payload,
+                resolveUserId(jwt),
+                resolveRoles(jwt),
+                encodeUserName(resolveUserName(jwt))
+        );
     }
 
     /** Historial del trámite. Requests oculta las gestiones si quien pide es el vecino. */

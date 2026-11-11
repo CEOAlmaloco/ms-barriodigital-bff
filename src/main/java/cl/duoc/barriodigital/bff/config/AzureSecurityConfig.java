@@ -10,18 +10,28 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 
 /**
- * Define quién puede acceder a cada ruta según su rol.
- * Las rutas protegidas requieren un JWT válido.
+ * Matriz de roles EP3-04 / EP3-45. JWT obligatorio fuera de health y OPTIONS.
+ * {@link BarrioRoleGateFilter} corta sin rol o con más de uno.
  */
 @Configuration
 @Profile("!dev")
 public class AzureSecurityConfig {
 
+        /** Filtro de exactamente un rol (no se registra como servlet filter global). */
+        @Bean
+        BarrioRoleGateFilter barrioRoleGateFilter() {
+                return new BarrioRoleGateFilter();
+        }
+
         /** Configura las reglas de acceso, los roles y las respuestas de error. */
         @Bean
-        SecurityFilterChain azureSecurityFilterChain(HttpSecurity http) throws Exception {
+        SecurityFilterChain azureSecurityFilterChain(
+                HttpSecurity http,
+                BarrioRoleGateFilter barrioRoleGateFilter
+        ) throws Exception {
                 http
                                 .csrf(csrf -> csrf.disable())
                                 .cors(Customizer.withDefaults())
@@ -29,16 +39,26 @@ public class AzureSecurityConfig {
                                 .authorizeHttpRequests(auth -> auth
                                                 .requestMatchers("/actuator/health").permitAll()
                                                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                                                .requestMatchers(HttpMethod.POST, "/api/requests")
+                                                .hasRole("Vecino")
                                                 .requestMatchers(HttpMethod.POST, "/api/catalog/procedures")
                                                 .hasRole("Admin")
                                                 .requestMatchers(HttpMethod.PUT, "/api/catalog/procedures/*")
                                                 .hasRole("Admin")
                                                 .requestMatchers("/api/admin/**").hasRole("Admin")
                                                 .requestMatchers("/api/mq/**").hasRole("Admin")
-                                                .requestMatchers(HttpMethod.PUT, "/api/requests/{id}/status")
+                                                .requestMatchers(HttpMethod.PUT, "/api/requests/*/status")
+                                                .hasAnyRole("Funcionario", "Admin")
+                                                .requestMatchers(HttpMethod.POST, "/api/requests/*/gestiones")
+                                                .hasAnyRole("Funcionario", "Admin")
+                                                .requestMatchers(HttpMethod.POST, "/api/requests/*/take")
                                                 .hasRole("Funcionario")
-                                                .requestMatchers(HttpMethod.POST, "/api/requests/{id}/gestiones")
-                                                .hasRole("Funcionario")
+                                                .requestMatchers(HttpMethod.PUT, "/api/requests/*/assignee")
+                                                .hasAnyRole("Funcionario", "Admin")
+                                                .requestMatchers(HttpMethod.GET, "/api/requests/assignees")
+                                                .hasAnyRole("Funcionario", "Admin")
+                                                .requestMatchers("/api/**")
+                                                .hasAnyRole("Vecino", "Funcionario", "Admin", "Auditor")
                                                 .anyRequest().authenticated())
                                 .oauth2ResourceServer(oauth2 -> oauth2
                                                 .jwt(jwt -> jwt.jwtAuthenticationConverter(
@@ -46,7 +66,8 @@ public class AzureSecurityConfig {
                                                 .authenticationEntryPoint(unauthorizedEntryPoint()))
                                 .exceptionHandling(ex -> ex
                                                 .authenticationEntryPoint(unauthorizedEntryPoint())
-                                                .accessDeniedHandler(forbiddenEntryPoint()));
+                                                .accessDeniedHandler(forbiddenEntryPoint()))
+                                .addFilterAfter(barrioRoleGateFilter, BearerTokenAuthenticationFilter.class);
                 return http.build();
         }
 

@@ -52,7 +52,9 @@ class RequestsProxyServiceTest {
                 .andExpect(method(HttpMethod.GET))
                 .andExpect(header("X-User-Id", "func-1"))
                 .andExpect(header("X-User-Roles", "Funcionario"))
-                .andRespond(withSuccess("{\"id\":\"id-1\",\"procedureType\":\"bache\"}", MediaType.APPLICATION_JSON));
+                .andRespond(withSuccess(
+                        "{\"id\":\"id-1\",\"procedureType\":\"bache\",\"assigneeId\":\"func-1\"}",
+                        MediaType.APPLICATION_JSON));
         server.expect(requestTo("http://catalog-test/api/catalog/procedures/bache/reserve"))
                 .andExpect(method(HttpMethod.POST)).andExpect(content().string(""))
                 .andRespond(withSuccess("{ilegible", MediaType.APPLICATION_JSON));
@@ -261,16 +263,43 @@ class RequestsProxyServiceTest {
     }
 
     @Test
-    void listConFechaSimple() {
-        server.expect(requestTo("http://requests-test/api/requests?status=INGRESADO&from=2026-09-01&to=2026-09-13"))
+    void listReenviaPaginacionYFiltros() {
+        server.expect(requestTo(
+                        "http://requests-test/api/requests?status=INGRESADO&from=2026-09-01&to=2026-09-13"
+                                + "&page=0&size=20&sort=createdAt,asc&q=bache&procedureType=bache"
+                                + "&sector=norte&assignee=me&open=true"))
                 .andExpect(method(HttpMethod.GET))
-                .andRespond(withSuccess("[{\"id\":\"1\"}]", MediaType.APPLICATION_JSON));
+                .andExpect(header("X-User-Id", "oid-f"))
+                .andExpect(header("X-User-Roles", "Funcionario"))
+                .andRespond(withSuccess(
+                        "{\"content\":[{\"id\":\"1\"}],\"page\":0,\"size\":20,\"totalElements\":1,\"totalPages\":1}",
+                        MediaType.APPLICATION_JSON));
 
-        ResponseEntity<List<Map<String, Object>>> response =
-                service.list("INGRESADO", "2026-09-01", "2026-09-13", "oid-f", "Funcionario");
+        ResponseEntity<Object> response = service.list(
+                "INGRESADO", "2026-09-01", "2026-09-13",
+                "0", "20", "createdAt,asc", "bache", "bache", "norte", "me", "true",
+                "oid-f", "Funcionario");
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(1, response.getBody().size());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = (Map<String, Object>) response.getBody();
+        assertEquals(0, ((Number) body.get("page")).intValue());
+        server.verify();
+    }
+
+    @Test
+    void takeReenviaPost() {
+        server.expect(requestTo("http://requests-test/api/requests/id-1/take"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("X-User-Id", "func-1"))
+                .andExpect(header("X-User-Roles", "Funcionario"))
+                .andRespond(withSuccess("{\"id\":\"id-1\",\"hasAssignee\":true}", MediaType.APPLICATION_JSON));
+
+        ResponseEntity<Map<String, Object>> response =
+                service.take("id-1", "func-1", "Funcionario", "Ana");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(true, response.getBody().get("hasAssignee"));
         server.verify();
     }
 
