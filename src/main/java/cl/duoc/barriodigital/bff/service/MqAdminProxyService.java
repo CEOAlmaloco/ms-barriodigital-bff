@@ -1,6 +1,8 @@
 package cl.duoc.barriodigital.bff.service;
 
+import cl.duoc.barriodigital.bff.config.InternalTokenProperties;
 import cl.duoc.barriodigital.bff.web.CatalogCaller;
+import cl.duoc.barriodigital.bff.web.DownstreamHeaders;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
@@ -20,7 +22,8 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * Reenvía la administración de colas a mq-admin: método, ruta, query y cuerpo.
- * El JWT no sale del BFF; solo se mandan los headers de identidad. Si mq-admin no conecta o no responde, responde 503 para que lo escriba el manejador de errores.
+ * El JWT no sale del BFF; se mandan identidad, token interno e IP de origen (EP3-43).
+ * Si mq-admin no conecta o no responde, responde 503.
  */
 @Service
 public class MqAdminProxyService {
@@ -31,10 +34,15 @@ public class MqAdminProxyService {
     public static final String GENERIC_ERROR = "No pudimos procesar la solicitud. Intenta nuevamente.";
 
     private final RestClient mqAdminRestClient;
+    private final InternalTokenProperties internalTokenProperties;
 
-    /** Recibe el cliente HTTP de mq-admin. */
-    public MqAdminProxyService(@Qualifier("mqAdminRestClient") RestClient mqAdminRestClient) {
+    /** Recibe el cliente HTTP de mq-admin y el token interno. */
+    public MqAdminProxyService(
+            @Qualifier("mqAdminRestClient") RestClient mqAdminRestClient,
+            InternalTokenProperties internalTokenProperties
+    ) {
         this.mqAdminRestClient = mqAdminRestClient;
+        this.internalTokenProperties = internalTokenProperties;
     }
 
     /** Reenvía la petición con el rol en {@code X-User-Roles}. */
@@ -64,8 +72,8 @@ public class MqAdminProxyService {
         }
     }
 
-    /** Copia la identidad y el Content-Type. No copia el header Authorization. */
-    private static void copyHeaders(
+    /** Copia identidad, token interno, IP de origen y Content-Type. No copia Authorization. */
+    private void copyHeaders(
             HttpHeaders headers, HttpServletRequest request, CatalogCaller.Identity identity
     ) {
         if (identity != null) {
@@ -79,22 +87,21 @@ public class MqAdminProxyService {
                 headers.set(CatalogCaller.HEADER_USER_NAME, identity.userName());
             }
         }
+        DownstreamHeaders.applyInternalToken(headers, internalTokenProperties.getInternalToken());
+        DownstreamHeaders.applySourceIp(headers, DownstreamHeaders.sourceIp(request));
         if (request.getContentType() != null) {
             headers.set(HttpHeaders.CONTENT_TYPE, request.getContentType());
         }
     }
 
-    /** Indica si el header tiene un valor útil para reenviar. */
     private static boolean hasText(String value) {
         return value != null && !value.isBlank();
     }
 
-    /** Indica si hay cuerpo para reenviar. */
     private static boolean hasBody(byte[] body) {
         return body != null && body.length > 0;
     }
 
-    /** Arma la respuesta. Si mq-admin responde 5xx, reemplaza el cuerpo por un mensaje genérico. */
     private ResponseEntity<byte[]> toResponse(RestClient.RequestHeadersSpec.ConvertibleClientHttpResponse response)
             throws java.io.IOException {
         HttpStatusCode status = response.getStatusCode();
@@ -115,7 +122,6 @@ public class MqAdminProxyService {
         return builder.body(payload);
     }
 
-    /** JSON corto para no mostrar un error interno de mq-admin. */
     private static byte[] genericError(HttpStatusCode status) {
         HttpStatus resolved = HttpStatus.resolve(status.value());
         String error = resolved == null ? "Server Error" : resolved.getReasonPhrase();

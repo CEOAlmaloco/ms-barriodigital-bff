@@ -19,7 +19,10 @@ import java.net.SocketTimeoutException;
 import java.util.List;
 import java.util.Map;
 
+import cl.duoc.barriodigital.bff.web.DownstreamHeaders;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
@@ -170,6 +173,33 @@ class CatalogProxyServiceTest {
 
         service.create(Map.of("value", "semaforo", "label", "Semáforo"), identity);
         service.update("bache", Map.of("label", "Bache grave"), identity);
+
+        server.verify();
+    }
+
+    @Test
+    void createReenviaIpDelGateway() {
+        CatalogCaller.Identity identity = new CatalogCaller.Identity("admin-1", "Admin", "Admin");
+        server.expect(requestTo("http://catalog-test/api/catalog/procedures"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header(DownstreamHeaders.HEADER_SOURCE_IP, "203.0.113.25"))
+                .andRespond(withSuccess("{\"value\":\"semaforo\"}", MediaType.APPLICATION_JSON));
+
+        service.create(Map.of("value", "semaforo", "label", "Semáforo"), identity, "203.0.113.25");
+
+        server.verify();
+    }
+
+    @Test
+    void createSinIpNoMandaHeaderDeIp() {
+        CatalogCaller.Identity identity = new CatalogCaller.Identity("admin-1", "Admin", "Admin");
+        server.expect(requestTo("http://catalog-test/api/catalog/procedures"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(request -> assertNull(
+                        request.getHeaders().getFirst(DownstreamHeaders.HEADER_SOURCE_IP)))
+                .andRespond(withSuccess("{\"value\":\"semaforo\"}", MediaType.APPLICATION_JSON));
+
+        service.create(Map.of("value", "semaforo", "label", "Semáforo"), identity, null);
 
         server.verify();
     }

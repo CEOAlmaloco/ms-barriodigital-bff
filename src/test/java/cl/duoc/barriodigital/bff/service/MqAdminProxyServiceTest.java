@@ -1,6 +1,8 @@
 package cl.duoc.barriodigital.bff.service;
 
+import cl.duoc.barriodigital.bff.config.InternalTokenProperties;
 import cl.duoc.barriodigital.bff.web.CatalogCaller;
+import cl.duoc.barriodigital.bff.web.DownstreamHeaders;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,7 +38,48 @@ class MqAdminProxyServiceTest {
     void setUp() {
         RestClient.Builder builder = RestClient.builder();
         server = MockRestServiceServer.bindTo(builder).build();
-        service = new MqAdminProxyService(builder.baseUrl("http://mq-test").build());
+        InternalTokenProperties token = new InternalTokenProperties();
+        token.setInternalToken("secret-interno");
+        service = new MqAdminProxyService(builder.baseUrl("http://mq-test").build(), token);
+    }
+
+    @Test
+    void reenviaTokenInternoEIpDelGateway() {
+        server.expect(requestTo("http://mq-test/api/mq/queues"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header(DownstreamHeaders.HEADER_INTERNAL_TOKEN, "secret-interno"))
+                .andExpect(header(DownstreamHeaders.HEADER_SOURCE_IP, "203.0.113.25"))
+                .andExpect(request -> assertNull(request.getHeaders().getFirst("X-Forwarded-For")))
+                .andRespond(withSuccess("{\"name\":\"q.demo\"}", MediaType.APPLICATION_JSON));
+
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/mq/queues");
+        request.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        request.addHeader(DownstreamHeaders.HEADER_SOURCE_IP, "203.0.113.25");
+        request.addHeader("X-Forwarded-For", "1.2.3.4");
+
+        service.forward(
+                request,
+                "{\"name\":\"q.demo\"}".getBytes(StandardCharsets.UTF_8),
+                new CatalogCaller.Identity("admin-1", "Admin", "Admin")
+        );
+
+        server.verify();
+    }
+
+    @Test
+    void sinIpDelGatewayNoMandaHeaderDeIp() {
+        server.expect(requestTo("http://mq-test/api/mq/queues"))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(header(DownstreamHeaders.HEADER_INTERNAL_TOKEN, "secret-interno"))
+                .andExpect(request -> assertNull(request.getHeaders().getFirst(DownstreamHeaders.HEADER_SOURCE_IP)))
+                .andRespond(withSuccess("[]", MediaType.APPLICATION_JSON));
+
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/mq/queues");
+        request.addHeader("X-Forwarded-For", "1.2.3.4");
+
+        service.forward(request, new byte[0], "Admin");
+
+        server.verify();
     }
 
     @Test

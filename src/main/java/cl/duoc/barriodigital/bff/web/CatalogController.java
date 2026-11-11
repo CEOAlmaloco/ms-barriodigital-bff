@@ -1,6 +1,7 @@
 package cl.duoc.barriodigital.bff.web;
 
 import cl.duoc.barriodigital.bff.service.CatalogProxyService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,22 +35,33 @@ public class CatalogController {
         return catalogProxyService.list();
     }
 
-    /** Crea un tipo. La identidad sale del JWT ya validado. */
+    /** Crea un tipo. Identidad del JWT e IP del Gateway ({@code X-Source-Ip}). */
     @PostMapping("/procedures")
     public ResponseEntity<Map<String, Object>> create(
             @RequestBody Map<String, Object> body,
-            Authentication authentication
+            Authentication authentication,
+            HttpServletRequest request
     ) {
-        return catalogProxyService.create(body, CatalogCaller.identity(authentication));
+        return catalogProxyService.create(
+                body,
+                CatalogCaller.identity(authentication),
+                DownstreamHeaders.sourceIp(request)
+        );
     }
 
-    /** Edita un tipo. El código va en la URL y la identidad sale del JWT. */
+    /** Edita un tipo. Identidad del JWT e IP del Gateway ({@code X-Source-Ip}). */
     @PutMapping("/procedures/{value}")
     public ResponseEntity<Map<String, Object>> update(
             @PathVariable String value,
             @RequestBody Map<String, Object> body,
-            Authentication authentication
+            Authentication authentication,
+            HttpServletRequest request
     ) {
-        return catalogProxyService.update(value, body, CatalogCaller.identity(authentication));
+        return catalogProxyService.update(
+                value,
+                body,
+                CatalogCaller.identity(authentication),
+                DownstreamHeaders.sourceIp(request)
+        );
     }
 }

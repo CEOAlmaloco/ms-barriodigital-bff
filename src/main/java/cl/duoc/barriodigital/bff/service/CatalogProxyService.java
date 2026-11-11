@@ -1,6 +1,7 @@
 package cl.duoc.barriodigital.bff.service;
 
 import cl.duoc.barriodigital.bff.web.CatalogCaller;
+import cl.duoc.barriodigital.bff.web.DownstreamHeaders;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
@@ -72,30 +73,44 @@ public class CatalogProxyService {
 
     /** Crea un tipo con el rol en {@code X-User-Roles}. */
     public ResponseEntity<Map<String, Object>> create(Map<String, Object> body, String rolesHeader) {
-        return create(body, new CatalogCaller.Identity(null, rolesHeader, null));
+        return create(body, new CatalogCaller.Identity(null, rolesHeader, null), null);
     }
 
     /** Crea un tipo y reenvía la identidad completa para auditoría. */
     public ResponseEntity<Map<String, Object>> create(Map<String, Object> body, CatalogCaller.Identity identity) {
+        return create(body, identity, null);
+    }
+
+    /** Crea un tipo con identidad e IP de origen del Gateway (EP3-43). */
+    public ResponseEntity<Map<String, Object>> create(
+            Map<String, Object> body, CatalogCaller.Identity identity, String sourceIp
+    ) {
         RequestBodySpec spec = catalogRestClient.post()
                 .uri("/api/catalog/procedures")
                 .contentType(MediaType.APPLICATION_JSON);
-        return exchangeMap(withIdentity(spec, identity).body(body));
+        return exchangeMap(withIdentity(spec, identity, sourceIp).body(body));
     }
 
     /** Edita un tipo con el rol en {@code X-User-Roles}. */
     public ResponseEntity<Map<String, Object>> update(String value, Map<String, Object> body, String rolesHeader) {
-        return update(value, body, new CatalogCaller.Identity(null, rolesHeader, null));
+        return update(value, body, new CatalogCaller.Identity(null, rolesHeader, null), null);
     }
 
     /** Edita un tipo y reenvía la identidad completa para auditoría. */
     public ResponseEntity<Map<String, Object>> update(
             String value, Map<String, Object> body, CatalogCaller.Identity identity
     ) {
+        return update(value, body, identity, null);
+    }
+
+    /** Edita un tipo con identidad e IP de origen del Gateway (EP3-43). */
+    public ResponseEntity<Map<String, Object>> update(
+            String value, Map<String, Object> body, CatalogCaller.Identity identity, String sourceIp
+    ) {
         RequestBodySpec spec = catalogRestClient.put()
                 .uri("/api/catalog/procedures/{value}", value)
                 .contentType(MediaType.APPLICATION_JSON);
-        return exchangeMap(withIdentity(spec, identity).body(body));
+        return exchangeMap(withIdentity(spec, identity, sourceIp).body(body));
     }
 
     /** Reserva un cupo. Solo usa el status HTTP, sin reintentos. */
@@ -112,19 +127,23 @@ public class CatalogProxyService {
                 .exchange((request, response) -> response.getStatusCode());
     }
 
-    /** Agrega los headers de identidad que vengan con texto. */
-    private static RequestBodySpec withIdentity(RequestBodySpec spec, CatalogCaller.Identity identity) {
-        if (identity == null) {
-            return spec;
+    /** Agrega identidad e IP de origen (solo {@code X-Source-Ip}, nunca Forwarded-For). */
+    private static RequestBodySpec withIdentity(
+            RequestBodySpec spec, CatalogCaller.Identity identity, String sourceIp
+    ) {
+        if (identity != null) {
+            if (hasText(identity.userId())) {
+                spec = spec.header(CatalogCaller.HEADER_USER_ID, identity.userId());
+            }
+            if (hasText(identity.roles())) {
+                spec = spec.header(CatalogCaller.HEADER_USER_ROLES, identity.roles());
+            }
+            if (hasText(identity.userName())) {
+                spec = spec.header(CatalogCaller.HEADER_USER_NAME, identity.userName());
+            }
         }
-        if (hasText(identity.userId())) {
-            spec = spec.header(CatalogCaller.HEADER_USER_ID, identity.userId());
-        }
-        if (hasText(identity.roles())) {
-            spec = spec.header(CatalogCaller.HEADER_USER_ROLES, identity.roles());
-        }
-        if (hasText(identity.userName())) {
-            spec = spec.header(CatalogCaller.HEADER_USER_NAME, identity.userName());
+        if (hasText(sourceIp)) {
+            spec = spec.header(DownstreamHeaders.HEADER_SOURCE_IP, sourceIp);
         }
         return spec;
     }
