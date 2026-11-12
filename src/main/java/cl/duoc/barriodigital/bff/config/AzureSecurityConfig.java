@@ -47,6 +47,15 @@ public class AzureSecurityConfig {
                                                 .hasRole("Admin")
                                                 .requestMatchers("/api/admin/**").hasRole("Admin")
                                                 .requestMatchers("/api/mq/**").hasRole("Admin")
+                                                .requestMatchers("/api/kafka/**").hasRole("Admin")
+                                                .requestMatchers(HttpMethod.GET, "/api/report/kpis",
+                                                                "/api/report/top-procedures")
+                                                .hasAnyRole("Admin", "Auditor")
+                                                .requestMatchers(HttpMethod.GET, "/api/report/sla",
+                                                                "/api/report/sla/**")
+                                                .hasAnyRole("Funcionario", "Admin", "Auditor")
+                                                .requestMatchers("/api/report/**").denyAll()
+                                                .requestMatchers("/api/audit/**").hasAnyRole("Admin", "Auditor")
                                                 .requestMatchers(HttpMethod.PUT, "/api/requests/*/status")
                                                 .hasAnyRole("Funcionario", "Admin")
                                                 .requestMatchers(HttpMethod.POST, "/api/requests/*/gestiones")
