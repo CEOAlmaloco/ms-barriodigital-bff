@@ -7,13 +7,16 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 import java.net.http.HttpClient;
+import java.time.Duration;
 
 /**
  * Cliente HTTP hacia kafka-admin.
- * Timeouts como catalog; el proxy de rutas llega en EP3-44.
+ * Connect como catalog; lectura 25 s (mayor que el tope de 23 s del replay y menor que los 30 s del Gateway).
  */
 @Configuration
 public class KafkaAdminClientConfig {
+
+    static final Duration READ_TIMEOUT = Duration.ofSeconds(25);
 
     /** Crea el RestClient con la URL de kafka-admin. */
     @Bean
@@ -22,7 +25,7 @@ public class KafkaAdminClientConfig {
                 .connectTimeout(CatalogClientConfig.CONNECT_TIMEOUT)
                 .build();
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
-        requestFactory.setReadTimeout(CatalogClientConfig.READ_TIMEOUT);
+        requestFactory.setReadTimeout(READ_TIMEOUT);
 
         return RestClient.builder()
                 .baseUrl(baseUrl)

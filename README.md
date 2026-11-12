@@ -113,6 +113,17 @@ Variable: `MQ_ADMIN_BASE_URL` (default `http://localhost:8084`). En el compose d
 
 El BFF arma `X-User-Roles` desde el claim `roles` del token, igual que en catalog. mq-admin no recibe el JWT. La ruta, el query string y el cuerpo se copian. Un 400, 404 o 409 de mq-admin se devuelve tal cual. Si no conecta o no responde a tiempo, el BFF responde **503** con `{status, error, message, path}`, no 502. El cliente corta a los **2 s** de conexión y **3 s** de lectura, como el de catalog.
 
+## Proxy a kafka-admin, report y audit (EP3-44)
+
+| Ruta | Roles | Downstream | Headers |
+|---|---|---|---|
+| `/api/kafka/**` | Admin | `KAFKA_ADMIN_BASE_URL` | identidad + `X-Internal-Token` + `X-Source-Ip` |
+| `/api/report/kpis`, `/api/report/top-procedures` | Admin, Auditor | `REPORT_BASE_URL` | `X-User-Id`, `X-User-Roles` |
+| `/api/report/sla`, `/api/report/sla/**` | Funcionario, Admin, Auditor | `REPORT_BASE_URL` | `X-User-Id`, `X-User-Roles` |
+| `/api/audit/**` | Admin, Auditor | `AUDIT_BASE_URL` | `X-User-Id`, `X-User-Roles` |
+
+Sin JWT → **401**. Rol incorrecto → **403**. Servicio caído → **503** con el cuerpo de `BffExceptionHandler`. Timeouts: report/audit como catalog (2 s / 3 s); kafka-admin lectura **25 s**.
+
 ## Arranque local sin Azure (solo desarrollo)
 
 ```powershell
@@ -242,6 +253,10 @@ La imagen no incluye secretos. Entra y la URL de requests van por env.
 | `AZURE_AUDIENCES` | `api://a0773f3e-...` y/ o el GUID `a0773f3e-...` (coma-separados) |
 | `REQUESTS_BASE_URL` | `http://host.docker.internal:8081` (local) o `http://requests:8081` (compose) |
 | `MQ_ADMIN_BASE_URL` | `http://localhost:8084` (local) o `http://mq-admin:8084` (compose) |
+| `KAFKA_ADMIN_BASE_URL` | `http://localhost:8085` (local) o `http://kafka-admin:8085` (compose) |
+| `REPORT_BASE_URL` | `http://localhost:8086` (local) o `http://report:8086` (compose) |
+| `AUDIT_BASE_URL` | `http://localhost:8087` (local) o `http://audit:8087` (compose) |
+| `INTERNAL_TOKEN` | mismo valor que mq-admin y kafka-admin |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:4200` |
 
 ```powershell

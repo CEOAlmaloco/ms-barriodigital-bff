@@ -21,8 +21,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Reenvío a kafka-admin con identidad, token interno e IP de origen (EP3-43).
- * Las rutas públicas del BFF llegan en EP3-44.
+ * Reenvío a kafka-admin con identidad, token interno e IP de origen (EP3-43 / EP3-44).
  */
 @Service
 public class KafkaAdminProxyService {
