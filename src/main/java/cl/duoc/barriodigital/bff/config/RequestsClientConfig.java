@@ -12,6 +12,7 @@ import java.time.Duration;
 /**
  * Cliente HTTP hacia requests.
  * Toma la URL base y los timeouts de conexión y lectura para que el BFF no espere sin límite.
+ * Cada llamada lleva el nombre de quien llama.
  */
 @Configuration
 public class RequestsClientConfig {
@@ -29,6 +30,7 @@ public class RequestsClientConfig {
         return RestClient.builder()
                 .baseUrl(baseUrl)
                 .requestFactory(requestFactory)
+                .requestInterceptor(new RequestsUserNameInterceptor())
                 .build();
     }
 }
