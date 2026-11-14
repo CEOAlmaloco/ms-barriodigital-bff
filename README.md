@@ -119,7 +119,7 @@ El BFF arma `X-User-Roles` desde el claim `roles` del token, igual que en catalo
 |---|---|---|---|
 | `/api/kafka/**` | Admin | `KAFKA_ADMIN_BASE_URL` | identidad + `X-Internal-Token` + `X-Source-Ip` |
 | `/api/report/kpis`, `/api/report/top-procedures` | Admin, Auditor | `REPORT_BASE_URL` | `X-User-Id`, `X-User-Roles` |
-| `/api/report/sla`, `/api/report/sla/**` | Funcionario, Admin, Auditor | `REPORT_BASE_URL` | `X-User-Id`, `X-User-Roles` |
+| `/api/report/sla`, `/api/report/sla/**`, `/api/report/map-points` | Funcionario, Admin, Auditor | `REPORT_BASE_URL` | `X-User-Id`, `X-User-Roles` |
 | `/api/audit/**` | Admin, Auditor | `AUDIT_BASE_URL` | `X-User-Id`, `X-User-Roles` |
 
 Sin JWT → **401**. Rol incorrecto → **403**. Servicio caído → **503** con el cuerpo de `BffExceptionHandler`. Timeouts: report/audit como catalog (2 s / 3 s); kafka-admin lectura **25 s**.

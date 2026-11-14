@@ -55,6 +55,26 @@ class ReportProxyServiceTest {
     }
 
     @Test
+    void reenviaElMapaConSusFiltrosSinCambiarlos() {
+        server.expect(requestTo(
+                        "http://report-test/api/report/map-points?range=last7d&status=INGRESADO,EN_GESTION&procedureType=bache"))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(header(CatalogCaller.HEADER_USER_ID, "audit-1"))
+                .andExpect(header(CatalogCaller.HEADER_USER_ROLES, "Auditor"))
+                .andExpect(request -> assertNull(request.getHeaders().getFirst("Authorization")))
+                .andRespond(withSuccess("{\"items\":[]}", MediaType.APPLICATION_JSON));
+
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/report/map-points");
+        request.setQueryString("range=last7d&status=INGRESADO,EN_GESTION&procedureType=bache");
+
+        var response = service.forward(request, new byte[0], new CatalogCaller.Identity("audit-1", "Auditor", null));
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("{\"items\":[]}", new String(response.getBody()));
+        server.verify();
+    }
+
+    @Test
     void servicioCaidoResponde503() {
         server.expect(requestTo("http://report-test/api/report/kpis"))
                 .andRespond(withException(new ConnectException("refused")));

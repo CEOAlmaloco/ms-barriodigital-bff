@@ -52,7 +52,7 @@ public class AzureSecurityConfig {
                                                                 "/api/report/top-procedures")
                                                 .hasAnyRole("Admin", "Auditor")
                                                 .requestMatchers(HttpMethod.GET, "/api/report/sla",
-                                                                "/api/report/sla/**")
+                                                                "/api/report/sla/**", "/api/report/map-points")
                                                 .hasAnyRole("Funcionario", "Admin", "Auditor")
                                                 .requestMatchers("/api/report/**").denyAll()
                                                 .requestMatchers("/api/audit/**").hasAnyRole("Admin", "Auditor")
