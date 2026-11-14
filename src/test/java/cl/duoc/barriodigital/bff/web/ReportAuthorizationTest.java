@@ -34,6 +34,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -74,7 +75,10 @@ class ReportAuthorizationTest {
             "Admin, /api/report/kpis",
             "Auditor, /api/report/top-procedures",
             "Funcionario, /api/report/sla",
-            "Admin, /api/report/sla/batch"
+            "Admin, /api/report/sla/batch",
+            "Funcionario, /api/report/map-points",
+            "Admin, /api/report/map-points",
+            "Auditor, /api/report/map-points"
     })
     void rolPermitidoRecibe200(String role, String path) throws Exception {
         when(reportProxyService.forward(any(HttpServletRequest.class), any(), eq(identity(role))))
@@ -92,6 +96,43 @@ class ReportAuthorizationTest {
     void vecinoNoAccedeASla() throws Exception {
         mockMvc.perform(get("/api/report/sla").with(withRole("Vecino")))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void vecinoNoAccedeAlMapa() throws Exception {
+        mockMvc.perform(get("/api/report/map-points").with(withRole("Vecino")))
+                .andExpect(status().isForbidden());
+
+        verify(reportProxyService, never()).forward(
+                any(HttpServletRequest.class), any(), any(CatalogCaller.Identity.class));
+    }
+
+    @Test
+    void mapaSinTokenResponde401() throws Exception {
+        mockMvc.perform(get("/api/report/map-points"))
+                .andExpect(status().isUnauthorized());
+
+        verify(reportProxyService, never()).forward(
+                any(HttpServletRequest.class), any(), any(CatalogCaller.Identity.class));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/report/map-points/x", "/api/report/map-points-x"})
+    void rutaVecinaDelMapaSigueBloqueada(String path) throws Exception {
+        mockMvc.perform(get(path).with(withRole("Admin")))
+                .andExpect(status().isForbidden());
+
+        verify(reportProxyService, never()).forward(
+                any(HttpServletRequest.class), any(), any(CatalogCaller.Identity.class));
+    }
+
+    @Test
+    void mapaSoloAceptaGet() throws Exception {
+        mockMvc.perform(post("/api/report/map-points").with(withRole("Admin")))
+                .andExpect(status().isForbidden());
+
+        verify(reportProxyService, never()).forward(
+                any(HttpServletRequest.class), any(), any(CatalogCaller.Identity.class));
     }
 
     @Test
