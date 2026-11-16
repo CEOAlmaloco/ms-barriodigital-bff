@@ -347,6 +347,47 @@ class RequestsProxyServiceTest {
     }
 
     @Test
+    void cancelYRatingReenvianIdentidad() {
+        server.expect(requestTo("http://requests-test/api/requests/id-1/cancel"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("X-User-Id", "vec-1"))
+                .andExpect(header("X-User-Roles", "Vecino"))
+                .andExpect(header("X-User-Name", "Ana"))
+                .andRespond(withSuccess("{\"id\":\"id-1\",\"status\":\"CANCELADO\"}", MediaType.APPLICATION_JSON));
+        server.expect(requestTo("http://requests-test/api/requests/id-1/rating"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("X-User-Id", "vec-1"))
+                .andExpect(content().json("{\"score\":5,\"comment\":\"ok\"}"))
+                .andRespond(withSuccess("{\"id\":\"id-1\",\"satisfactionScore\":5}", MediaType.APPLICATION_JSON));
+
+        assertEquals("CANCELADO", service.cancel("id-1", "vec-1", "Vecino", "Ana").getBody().get("status"));
+        assertEquals(5, service.rate("id-1", Map.of("score", 5, "comment", "ok"), "vec-1", "Vecino", "Ana")
+                .getBody().get("satisfactionScore"));
+        server.verify();
+    }
+
+    @Test
+    void duplicatesReenviaConsultaDeAltaYDeTramite() {
+        server.expect(requestTo(
+                        "http://requests-test/api/requests/duplicates?procedureType=bache"
+                                + "&latitude=-37.87&longitude=-71.59&sector=ralco"))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(header("X-User-Id", "vec-1"))
+                .andExpect(header("X-User-Roles", "Vecino"))
+                .andRespond(withSuccess("[{\"folio\":\"BD-1\"}]", MediaType.APPLICATION_JSON));
+        server.expect(requestTo("http://requests-test/api/requests/id-1/duplicates"))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(header("X-User-Id", "func-1"))
+                .andExpect(header("X-User-Roles", "Funcionario"))
+                .andRespond(withSuccess("[{\"id\":\"id-2\"}]", MediaType.APPLICATION_JSON));
+
+        assertEquals(HttpStatus.OK, service.duplicatesForNew(
+                "bache", "-37.87", "-71.59", "ralco", "vec-1", "Vecino").getStatusCode());
+        assertEquals(HttpStatus.OK, service.duplicatesForRequest("id-1", "func-1", "Funcionario").getStatusCode());
+        server.verify();
+    }
+
+    @Test
     void takeReenviaPost() {
         server.expect(requestTo("http://requests-test/api/requests/id-1/take"))
                 .andExpect(method(HttpMethod.POST))
