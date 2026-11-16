@@ -96,7 +96,7 @@ class RequestStatusOrchestrationServiceTest {
 
     @Test
     void consulta404ConservaElErrorSinEscrituras() {
-        var response = rejection(404, "Tramite no encontrado", "/api/requests/id-1");
+        var response = rejection(404, "REQUEST_NOT_FOUND", "/api/requests/id-1");
         when(requests.getById("id-1", "func-1", "Funcionario")).thenReturn(response);
         assertSame(response, call());
         verifyNoInteractions(catalog);
@@ -170,13 +170,13 @@ class RequestStatusOrchestrationServiceTest {
     void rechazoConfirmadoCompensaUnaVezYConservaElError(int status) {
         lookup();
         reserve();
-        String message = switch (status) {
-            case 400 -> "status es obligatorio";
-            case 403 -> "Solo un Funcionario puede cambiar el estado";
-            case 404 -> "Tramite no encontrado";
-            default -> "No se puede pasar de ADMITIDO a ADMITIDO";
+        String code = switch (status) {
+            case 400 -> "STATUS_REQUIRED";
+            case 403 -> "STATUS_CHANGE_FORBIDDEN";
+            case 404 -> "REQUEST_NOT_FOUND";
+            default -> "STATUS_TRANSITION_NOT_ALLOWED";
         };
-        var rejected = rejection(status, message, "/api/requests/id-1/status");
+        var rejected = rejection(status, code, "/api/requests/id-1/status");
         changed(rejected, true);
         when(catalog.release("bache")).thenReturn(HttpStatus.OK);
         assertSame(rejected, call());
@@ -188,12 +188,23 @@ class RequestStatusOrchestrationServiceTest {
         order.verifyNoMoreInteractions();
     }
 
+    @Test
+    void motivoDeMasDe500CaracteresLiberaElCupo() {
+        lookup();
+        reserve();
+        var rejected = rejection(400, "REQUEST_BODY_INVALID", "/api/requests/id-1/status");
+        changed(rejected, true);
+        when(catalog.release("bache")).thenReturn(HttpStatus.OK);
+        assertSame(rejected, call());
+        verify(catalog).release("bache");
+    }
+
     @ParameterizedTest
     @ValueSource(ints = {404, 500, 0})
     void compensacionFallidaOInciertaTieneErrorEspecifico(int status) {
         lookup();
         reserve();
-        changed(rejection(409, "No se puede pasar de ADMITIDO a ADMITIDO", "/api/requests/id-1/status"), true);
+        changed(rejection(409, "STATUS_TRANSITION_NOT_ALLOWED", "/api/requests/id-1/status"), true);
         if (status == 0) when(catalog.release("bache")).thenThrow(new ResourceAccessException("timeout"));
         else when(catalog.release("bache")).thenReturn(HttpStatus.valueOf(status));
         expect("QUOTA_COMPENSATION_UNCONFIRMED");
@@ -207,7 +218,7 @@ class RequestStatusOrchestrationServiceTest {
     void erroresSinRechazoReconocibleNoLiberan(int status) {
         lookup();
         reserve();
-        changed(rejection(status, "detalle interno", "/otra/operacion"), true);
+        changed(rejection(status, "STATUS_TRANSITION_NOT_ALLOWED", "/otra/operacion"), true);
         expect("ADMISSION_RESULT_UNCONFIRMED");
         verify(catalog).reserve("bache");
         verifyNoMoreInteractions(catalog);
@@ -262,7 +273,7 @@ class RequestStatusOrchestrationServiceTest {
                 : code.equals("ADMISSION_DEPENDENCY_UNAVAILABLE") ? 503 : 502, error.getStatusCode().value());
     }
 
-    private static ResponseEntity<Map<String, Object>> rejection(int status, String message, String path) {
-        return ResponseEntity.status(status).body(Map.of("status", status, "message", message, "path", path));
+    private static ResponseEntity<Map<String, Object>> rejection(int status, String code, String path) {
+        return ResponseEntity.status(status).body(Map.of("status", status, "code", code, "path", path));
     }
 }

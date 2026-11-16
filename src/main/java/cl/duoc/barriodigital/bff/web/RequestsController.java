@@ -5,6 +5,7 @@ import cl.duoc.barriodigital.bff.service.RequestsProxyService;
 import cl.duoc.barriodigital.bff.service.RequestStatusOrchestrationService;
 import cl.duoc.barriodigital.bff.web.dto.AssignRequestDto;
 import cl.duoc.barriodigital.bff.web.dto.ChangeStatusDto;
+import cl.duoc.barriodigital.bff.web.dto.CitizenCommentDto;
 import cl.duoc.barriodigital.bff.web.dto.CreateRequestDto;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -156,6 +157,44 @@ public class RequestsController {
         return requestsProxyService.assignees(resolveUserId(jwt), resolveRoles(jwt));
     }
 
+    /**
+     * Exportación CSV (EP3-63 / EP3-69). Mismos filtros que el listado, sin page/size.
+     * Los cuatro roles; el Vecino solo exporta los suyos (lo aplica requests).
+     */
+    @GetMapping("/export")
+    public ResponseEntity<byte[]> export(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String procedureType,
+            @RequestParam(required = false) String sector,
+            @RequestParam(required = false) String assignee,
+            @RequestParam(required = false) String open,
+            @RequestParam(required = false) String contactDue,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return requestsProxyService.export(
+                status, from, to, sort, q, procedureType, sector, assignee, open, contactDue,
+                resolveUserId(jwt), resolveRoles(jwt));
+    }
+
+    /** Preferencias de aviso del usuario autenticado (EP3-65 / EP3-69). */
+    @GetMapping("/me/notification-preferences")
+    public ResponseEntity<Map<String, Object>> getNotificationPreferences(@AuthenticationPrincipal Jwt jwt) {
+        return requestsProxyService.getNotificationPreferences(resolveUserId(jwt), resolveRoles(jwt));
+    }
+
+    /** Guarda si el usuario recibe avisos por correo (EP3-65 / EP3-69). */
+    @PutMapping("/me/notification-preferences")
+    public ResponseEntity<Map<String, Object>> putNotificationPreferences(
+            @RequestBody Map<String, Object> body,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return requestsProxyService.putNotificationPreferences(body, resolveUserId(jwt), resolveRoles(jwt));
+    }
+
     /** Devuelve un trámite. El id de usuario y los roles salen del JWT. */
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getById(
@@ -175,8 +214,8 @@ public class RequestsController {
     }
 
     /**
-     * Lista trámites paginados (EP3-30 / EP3-45).
-     * Reenvía page, size, sort, q y filtros; la respuesta paginada viene de requests.
+     * Lista trámites paginados (EP3-30 / EP3-45 / EP3-66).
+     * Reenvía page, size, sort, q y filtros (incluido {@code contactDue} solo staff en requests).
      */
     @GetMapping
     public ResponseEntity<Object> list(
@@ -191,10 +230,11 @@ public class RequestsController {
             @RequestParam(required = false) String sector,
             @RequestParam(required = false) String assignee,
             @RequestParam(required = false) String open,
+            @RequestParam(required = false) String contactDue,
             @AuthenticationPrincipal Jwt jwt
     ) {
         return requestsProxyService.list(
-                status, from, to, page, size, sort, q, procedureType, sector, assignee, open,
+                status, from, to, page, size, sort, q, procedureType, sector, assignee, open, contactDue,
                 resolveUserId(jwt), resolveRoles(jwt));
     }
 
@@ -265,6 +305,53 @@ public class RequestsController {
             @AuthenticationPrincipal Jwt jwt
     ) {
         return requestsProxyService.actividad(id, resolveUserId(jwt), resolveRoles(jwt));
+    }
+
+    /** Comentario del vecino titular (EP3-64 / EP3-69). */
+    @PostMapping(value = "/{id}/comments", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> comment(
+            @PathVariable String id,
+            @RequestBody CitizenCommentDto body,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return requestsProxyService.comment(
+                id, commentPayload(body), resolveUserId(jwt), resolveRoles(jwt),
+                encodeUserName(resolveUserName(jwt)));
+    }
+
+    /** Comentario del vecino con imagen opcional (EP3-64 / EP3-69). */
+    @PostMapping(value = "/{id}/comments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> commentWithAttachment(
+            @PathVariable String id,
+            @RequestPart("comment") CitizenCommentDto body,
+            @RequestPart(value = "attachment", required = false) MultipartFile attachment,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        Map<String, Object> payload = commentPayload(body);
+        if (attachment != null) {
+            return requestsProxyService.commentWithAttachment(
+                    id, payload, attachment, resolveUserId(jwt), resolveRoles(jwt),
+                    encodeUserName(resolveUserName(jwt)));
+        }
+        return requestsProxyService.comment(
+                id, payload, resolveUserId(jwt), resolveRoles(jwt), encodeUserName(resolveUserName(jwt)));
+    }
+
+    private static Map<String, Object> commentPayload(CitizenCommentDto body) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("text", body == null ? null : body.text());
+        return payload;
+    }
+
+    /** Imagen de un comentario; mismas reglas de acceso que la del alta. */
+    @GetMapping("/{id}/comments/{commentId}/attachment")
+    public ResponseEntity<byte[]> getCommentAttachment(
+            @PathVariable String id,
+            @PathVariable String commentId,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return requestsProxyService.getCommentAttachment(
+                id, commentId, resolveUserId(jwt), resolveRoles(jwt));
     }
 
     /** Registra una gestión. En producción la seguridad exige rol Funcionario antes de llegar aquí. */

@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -61,7 +62,7 @@ class RequestsProxyServiceTest {
         int status = outcome.equals("rejected") ? 409 : outcome.equals("uncertain") ? 500 : 200;
         String responseBody = outcome.equals("unreadable") ? "{ilegible"
                 : outcome.equals("rejected") ? """
-                    {"status":409,"message":"No se puede pasar de ADMITIDO a ADMITIDO","path":"/api/requests/id-1/status"}
+                    {"status":409,"code":"STATUS_TRANSITION_NOT_ALLOWED","path":"/api/requests/id-1/status"}
                     """ : "{\"id\":\"id-1\",\"status\":\"ADMITIDO\"}";
         server.expect(requestTo("http://requests-test/api/requests/id-1/status"))
                 .andExpect(method(HttpMethod.PUT))
@@ -267,7 +268,7 @@ class RequestsProxyServiceTest {
         server.expect(requestTo(
                         "http://requests-test/api/requests?status=INGRESADO&from=2026-09-01&to=2026-09-13"
                                 + "&page=0&size=20&sort=createdAt,asc&q=bache&procedureType=bache"
-                                + "&sector=norte&assignee=me&open=true"))
+                                + "&sector=norte&assignee=me&open=true&contactDue=true"))
                 .andExpect(method(HttpMethod.GET))
                 .andExpect(header("X-User-Id", "oid-f"))
                 .andExpect(header("X-User-Roles", "Funcionario"))
@@ -277,13 +278,71 @@ class RequestsProxyServiceTest {
 
         ResponseEntity<Object> response = service.list(
                 "INGRESADO", "2026-09-01", "2026-09-13",
-                "0", "20", "createdAt,asc", "bache", "bache", "norte", "me", "true",
+                "0", "20", "createdAt,asc", "bache", "bache", "norte", "me", "true", "true",
                 "oid-f", "Funcionario");
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         @SuppressWarnings("unchecked")
         Map<String, Object> body = (Map<String, Object>) response.getBody();
         assertEquals(0, ((Number) body.get("page")).intValue());
+        server.verify();
+    }
+
+    @Test
+    void exportReenviaFiltrosYHeadersCsv() {
+        server.expect(requestTo(
+                        "http://requests-test/api/requests/export?status=INGRESADO&open=true&contactDue=true"))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(header("X-User-Id", "oid-f"))
+                .andExpect(header("X-User-Roles", "Funcionario"))
+                .andRespond(withSuccess("folio;estado\r\n", MediaType.parseMediaType("text/csv;charset=UTF-8"))
+                        .header(HttpHeaders.CONTENT_DISPOSITION,
+                                "attachment; filename=\"tramites-2026-11-15.csv\""));
+
+        ResponseEntity<byte[]> response = service.export(
+                "INGRESADO", null, null, null, null, null, null, null, "true", "true",
+                "oid-f", "Funcionario");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("private, no-store", response.getHeaders().getCacheControl());
+        assertEquals("attachment; filename=\"tramites-2026-11-15.csv\"",
+                response.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION));
+        server.verify();
+    }
+
+    @Test
+    void commentReenviaJsonEIdentidad() {
+        server.expect(requestTo("http://requests-test/api/requests/id-1/comments"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("X-User-Id", "vec-1"))
+                .andExpect(header("X-User-Roles", "Vecino"))
+                .andExpect(header("X-User-Name", "Ana"))
+                .andExpect(content().json("{\"text\":\"hola\"}"))
+                .andRespond(withStatus(HttpStatus.CREATED)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"events\":[]}"));
+
+        ResponseEntity<Map<String, Object>> response =
+                service.comment("id-1", Map.of("text", "hola"), "vec-1", "Vecino", "Ana");
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        server.verify();
+    }
+
+    @Test
+    void notificationPreferencesReenviaGetYPut() {
+        server.expect(requestTo("http://requests-test/api/requests/me/notification-preferences"))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(header("X-User-Id", "vec-1"))
+                .andRespond(withSuccess("{\"emailEnabled\":true}", MediaType.APPLICATION_JSON));
+        server.expect(requestTo("http://requests-test/api/requests/me/notification-preferences"))
+                .andExpect(method(HttpMethod.PUT))
+                .andExpect(content().json("{\"emailEnabled\":false}"))
+                .andRespond(withSuccess("{\"emailEnabled\":false}", MediaType.APPLICATION_JSON));
+
+        assertEquals(true, service.getNotificationPreferences("vec-1", "Vecino").getBody().get("emailEnabled"));
+        assertEquals(false, service.putNotificationPreferences(Map.of("emailEnabled", false), "vec-1", "Vecino")
+                .getBody().get("emailEnabled"));
         server.verify();
     }
 

@@ -30,6 +30,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -161,6 +163,52 @@ class RequestStatusAuthorizationTest {
                         .content("{\"status\":\"ADMITIDO\"}"))
                 .andExpect(status().isUnauthorized());
         org.mockito.Mockito.verifyNoInteractions(requestsProxyService, catalogProxyService);
+    }
+
+    @Test
+    void vecinoPuedeComentar() throws Exception {
+        when(requestsProxyService.comment(eq("id-1"), anyMap(), eq("vec-1"), eq("Vecino"), any()))
+                .thenReturn(ResponseEntity.status(201).body(Map.of("events", List.of())));
+
+        mockMvc.perform(post("/api/requests/id-1/comments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"text\":\"hola\"}")
+                        .with(jwt()
+                                .jwt(j -> j.claim("oid", "vec-1").claim("roles", List.of("Vecino")))
+                                .authorities(new SimpleGrantedAuthority("ROLE_Vecino"))))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void funcionarioNoPuedeComentar() throws Exception {
+        mockMvc.perform(post("/api/requests/id-1/comments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"text\":\"hola\"}")
+                        .with(jwt()
+                                .jwt(j -> j.claim("oid", "func-1").claim("roles", List.of("Funcionario")))
+                                .authorities(new SimpleGrantedAuthority("ROLE_Funcionario"))))
+                .andExpect(status().isForbidden());
+        verify(requestsProxyService, never()).comment(anyString(), anyMap(), any(), any(), any());
+    }
+
+    @Test
+    void exportYPreferenciasAceptanLosCuatroRoles() throws Exception {
+        when(requestsProxyService.export(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                eq("aud-1"), eq("Auditor")))
+                .thenReturn(ResponseEntity.ok(new byte[]{1}));
+        when(requestsProxyService.getNotificationPreferences("aud-1", "Auditor"))
+                .thenReturn(ResponseEntity.ok(Map.of("emailEnabled", true)));
+
+        mockMvc.perform(get("/api/requests/export")
+                        .with(jwt()
+                                .jwt(j -> j.claim("oid", "aud-1").claim("roles", List.of("Auditor")))
+                                .authorities(new SimpleGrantedAuthority("ROLE_Auditor"))))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/requests/me/notification-preferences")
+                        .with(jwt()
+                                .jwt(j -> j.claim("oid", "aud-1").claim("roles", List.of("Auditor")))
+                                .authorities(new SimpleGrantedAuthority("ROLE_Auditor"))))
+                .andExpect(status().isOk());
     }
 
     @Test

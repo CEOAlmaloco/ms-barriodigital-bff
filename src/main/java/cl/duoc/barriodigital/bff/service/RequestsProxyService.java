@@ -153,25 +153,11 @@ public class RequestsProxyService {
                 .uri("/api/requests/{id}/attachment", id)
                 .header(HEADER_USER_ID, userId)
                 .header(HEADER_USER_ROLES, nullToEmpty(roles))
-                .exchange((request, response) -> {
-                    HttpHeaders headers = new HttpHeaders();
-                    headers.setContentType(resolveContentType(response.getHeaders().getContentType()));
-                    headers.setCacheControl("private, no-store");
-                    headers.set("X-Content-Type-Options", "nosniff");
-                    String disposition = response.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION);
-                    if (disposition != null) {
-                        headers.set(HttpHeaders.CONTENT_DISPOSITION, disposition);
-                    }
-                    return new ResponseEntity<>(
-                            response.getBody().readAllBytes(),
-                            headers,
-                            response.getStatusCode()
-                    );
-                });
+                .exchange((request, response) -> binaryResponse(response));
     }
 
     /**
-     * Listado paginado (EP3-30): reenvía page, size, sort, q y filtros.
+     * Listado paginado (EP3-30 / EP3-66): reenvía page, size, sort, q y filtros, incluido {@code contactDue}.
      * La respuesta es el objeto paginado de requests (content, page, size, totalElements, totalPages).
      */
     public ResponseEntity<Object> list(
@@ -186,10 +172,167 @@ public class RequestsProxyService {
             String sector,
             String assignee,
             String open,
+            String contactDue,
             String userId,
             String roles
     ) {
-        String uri = UriComponentsBuilder.fromPath("/api/requests")
+        String uri = listUri(
+                "/api/requests", status, from, to, page, size, sort, q, procedureType, sector, assignee, open, contactDue);
+
+        return requestsRestClient.get()
+                .uri(uri)
+                .header(HEADER_USER_ID, userId)
+                .header(HEADER_USER_ROLES, nullToEmpty(roles))
+                .exchange((request, response) -> ResponseEntity
+                        .status(response.getStatusCode())
+                        .contentType(resolveContentType(response.getHeaders().getContentType()))
+                        .body(response.bodyTo(PAGE_TYPE)));
+    }
+
+    /**
+     * Exportación CSV (EP3-63 / EP3-69): mismos filtros que el listado, sin page/size.
+     * Devuelve los bytes y headers de requests sin modificarlos.
+     */
+    public ResponseEntity<byte[]> export(
+            String status,
+            String from,
+            String to,
+            String sort,
+            String q,
+            String procedureType,
+            String sector,
+            String assignee,
+            String open,
+            String contactDue,
+            String userId,
+            String roles
+    ) {
+        String uri = listUri(
+                "/api/requests/export", status, from, to, null, null, sort, q, procedureType, sector, assignee, open,
+                contactDue);
+
+        return requestsRestClient.get()
+                .uri(uri)
+                .header(HEADER_USER_ID, userId)
+                .header(HEADER_USER_ROLES, nullToEmpty(roles))
+                .exchange((request, response) -> binaryResponse(response));
+    }
+
+    /** Comentario del vecino en JSON (EP3-64 / EP3-69). */
+    public ResponseEntity<Map<String, Object>> comment(
+            String id, Map<String, Object> body, String userId, String roles, String userName
+    ) {
+        RequestBodySpec spec = requestsRestClient.post()
+                .uri("/api/requests/{id}/comments", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HEADER_USER_ID, userId)
+                .header(HEADER_USER_ROLES, nullToEmpty(roles));
+        if (userName != null && !userName.isBlank()) {
+            spec = spec.header(HEADER_USER_NAME, userName.trim());
+        }
+        return spec.body(body).exchange((request, response) -> ResponseEntity
+                .status(response.getStatusCode())
+                .contentType(resolveContentType(response.getHeaders().getContentType()))
+                .body(response.bodyTo(MAP_TYPE)));
+    }
+
+    /** Comentario del vecino con imagen opcional (EP3-64 / EP3-69). */
+    public ResponseEntity<Map<String, Object>> commentWithAttachment(
+            String id,
+            Map<String, Object> body,
+            MultipartFile attachment,
+            String userId,
+            String roles,
+            String userName
+    ) {
+        byte[] content;
+        try {
+            content = attachment.getBytes();
+        } catch (IOException exception) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "No se pudo leer la imagen adjunta");
+        }
+
+        HttpHeaders jsonHeaders = new HttpHeaders();
+        jsonHeaders.setContentType(MediaType.APPLICATION_JSON);
+        HttpHeaders imageHeaders = new HttpHeaders();
+        imageHeaders.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+
+        MultiValueMap<String, Object> parts = new LinkedMultiValueMap<>();
+        parts.add("comment", new HttpEntity<>(body, jsonHeaders));
+        parts.add("attachment", new HttpEntity<>(new ByteArrayResource(content) {
+            @Override
+            public String getFilename() {
+                return "evidencia";
+            }
+        }, imageHeaders));
+
+        RequestBodySpec spec = requestsRestClient.post()
+                .uri("/api/requests/{id}/comments", id)
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .header(HEADER_USER_ID, userId)
+                .header(HEADER_USER_ROLES, nullToEmpty(roles));
+        if (userName != null && !userName.isBlank()) {
+            spec = spec.header(HEADER_USER_NAME, userName.trim());
+        }
+        return spec.body(parts).exchange((request, response) -> ResponseEntity
+                .status(response.getStatusCode())
+                .contentType(resolveContentType(response.getHeaders().getContentType()))
+                .body(response.bodyTo(MAP_TYPE)));
+    }
+
+    /** Descarga de la imagen de un comentario; requests vuelve a comprobar acceso. */
+    public ResponseEntity<byte[]> getCommentAttachment(String id, String commentId, String userId, String roles) {
+        return requestsRestClient.get()
+                .uri("/api/requests/{id}/comments/{commentId}/attachment", id, commentId)
+                .header(HEADER_USER_ID, userId)
+                .header(HEADER_USER_ROLES, nullToEmpty(roles))
+                .exchange((request, response) -> binaryResponse(response));
+    }
+
+    /** Preferencias de aviso del caller (EP3-65 / EP3-69). */
+    public ResponseEntity<Map<String, Object>> getNotificationPreferences(String userId, String roles) {
+        return requestsRestClient.get()
+                .uri("/api/requests/me/notification-preferences")
+                .header(HEADER_USER_ID, userId)
+                .header(HEADER_USER_ROLES, nullToEmpty(roles))
+                .exchange((request, response) -> ResponseEntity
+                        .status(response.getStatusCode())
+                        .contentType(resolveContentType(response.getHeaders().getContentType()))
+                        .body(response.bodyTo(MAP_TYPE)));
+    }
+
+    /** Guarda preferencias de aviso del caller (EP3-65 / EP3-69). */
+    public ResponseEntity<Map<String, Object>> putNotificationPreferences(
+            Map<String, Object> body, String userId, String roles
+    ) {
+        return requestsRestClient.put()
+                .uri("/api/requests/me/notification-preferences")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HEADER_USER_ID, userId)
+                .header(HEADER_USER_ROLES, nullToEmpty(roles))
+                .body(body)
+                .exchange((request, response) -> ResponseEntity
+                        .status(response.getStatusCode())
+                        .contentType(resolveContentType(response.getHeaders().getContentType()))
+                        .body(response.bodyTo(MAP_TYPE)));
+    }
+
+    private static String listUri(
+            String path,
+            String status,
+            String from,
+            String to,
+            String page,
+            String size,
+            String sort,
+            String q,
+            String procedureType,
+            String sector,
+            String assignee,
+            String open,
+            String contactDue
+    ) {
+        return UriComponentsBuilder.fromPath(path)
                 .queryParamIfPresent("status", Optional.ofNullable(blankToNull(status)))
                 .queryParamIfPresent("from", Optional.ofNullable(blankToNull(from)))
                 .queryParamIfPresent("to", Optional.ofNullable(blankToNull(to)))
@@ -201,17 +344,24 @@ public class RequestsProxyService {
                 .queryParamIfPresent("sector", Optional.ofNullable(blankToNull(sector)))
                 .queryParamIfPresent("assignee", Optional.ofNullable(blankToNull(assignee)))
                 .queryParamIfPresent("open", Optional.ofNullable(blankToNull(open)))
+                .queryParamIfPresent("contactDue", Optional.ofNullable(blankToNull(contactDue)))
                 .build(true)
                 .toUriString();
+    }
 
-        return requestsRestClient.get()
-                .uri(uri)
-                .header(HEADER_USER_ID, userId)
-                .header(HEADER_USER_ROLES, nullToEmpty(roles))
-                .exchange((request, response) -> ResponseEntity
-                        .status(response.getStatusCode())
-                        .contentType(resolveContentType(response.getHeaders().getContentType()))
-                        .body(response.bodyTo(PAGE_TYPE)));
+    /** Reenvía bytes y headers de descarga (CSV o imagen) sin alterar el cuerpo. */
+    private static ResponseEntity<byte[]> binaryResponse(
+            RestClient.RequestHeadersSpec.ConvertibleClientHttpResponse response
+    ) throws IOException {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(resolveContentType(response.getHeaders().getContentType()));
+        headers.setCacheControl("private, no-store");
+        headers.set("X-Content-Type-Options", "nosniff");
+        String disposition = response.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION);
+        if (disposition != null) {
+            headers.set(HttpHeaders.CONTENT_DISPOSITION, disposition);
+        }
+        return new ResponseEntity<>(response.getBody().readAllBytes(), headers, response.getStatusCode());
     }
 
     /** Toma un trámite sin responsable (EP3-05). */
