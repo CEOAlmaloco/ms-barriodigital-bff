@@ -212,6 +212,74 @@ class RequestStatusAuthorizationTest {
     }
 
     @Test
+    void vecinoPuedeCancelarYCalificar() throws Exception {
+        when(requestsProxyService.cancel(eq("id-1"), eq("vec-1"), eq("Vecino"), any()))
+                .thenReturn(ResponseEntity.ok(Map.of("id", "id-1", "status", "CANCELADO")));
+        when(requestsProxyService.rate(eq("id-1"), anyMap(), eq("vec-1"), eq("Vecino"), any()))
+                .thenReturn(ResponseEntity.ok(Map.of("id", "id-1", "satisfactionScore", 5)));
+
+        mockMvc.perform(post("/api/requests/id-1/cancel")
+                        .with(jwt()
+                                .jwt(j -> j.claim("oid", "vec-1").claim("roles", List.of("Vecino")))
+                                .authorities(new SimpleGrantedAuthority("ROLE_Vecino"))))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/requests/id-1/rating")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"score\":5}")
+                        .with(jwt()
+                                .jwt(j -> j.claim("oid", "vec-1").claim("roles", List.of("Vecino")))
+                                .authorities(new SimpleGrantedAuthority("ROLE_Vecino"))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void funcionarioNoPuedeCancelarNiCalificar() throws Exception {
+        mockMvc.perform(post("/api/requests/id-1/cancel")
+                        .with(jwt()
+                                .jwt(j -> j.claim("oid", "func-1").claim("roles", List.of("Funcionario")))
+                                .authorities(new SimpleGrantedAuthority("ROLE_Funcionario"))))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/requests/id-1/rating")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"score\":5}")
+                        .with(jwt()
+                                .jwt(j -> j.claim("oid", "func-1").claim("roles", List.of("Funcionario")))
+                                .authorities(new SimpleGrantedAuthority("ROLE_Funcionario"))))
+                .andExpect(status().isForbidden());
+        verify(requestsProxyService, never()).cancel(anyString(), any(), any(), any());
+        verify(requestsProxyService, never()).rate(anyString(), anyMap(), any(), any(), any());
+    }
+
+    @Test
+    void duplicadosAltaSoloVecinoYDeTramiteSoloStaff() throws Exception {
+        when(requestsProxyService.duplicatesForNew(any(), any(), any(), any(), eq("vec-1"), eq("Vecino")))
+                .thenReturn(ResponseEntity.ok(List.of()));
+        when(requestsProxyService.duplicatesForRequest("id-1", "func-1", "Funcionario"))
+                .thenReturn(ResponseEntity.ok(List.of()));
+
+        mockMvc.perform(get("/api/requests/duplicates").param("procedureType", "bache").param("sector", "ralco")
+                        .with(jwt()
+                                .jwt(j -> j.claim("oid", "vec-1").claim("roles", List.of("Vecino")))
+                                .authorities(new SimpleGrantedAuthority("ROLE_Vecino"))))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/requests/duplicates").param("procedureType", "bache")
+                        .with(jwt()
+                                .jwt(j -> j.claim("oid", "func-1").claim("roles", List.of("Funcionario")))
+                                .authorities(new SimpleGrantedAuthority("ROLE_Funcionario"))))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/requests/id-1/duplicates")
+                        .with(jwt()
+                                .jwt(j -> j.claim("oid", "func-1").claim("roles", List.of("Funcionario")))
+                                .authorities(new SimpleGrantedAuthority("ROLE_Funcionario"))))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/requests/id-1/duplicates")
+                        .with(jwt()
+                                .jwt(j -> j.claim("oid", "vec-1").claim("roles", List.of("Vecino")))
+                                .authorities(new SimpleGrantedAuthority("ROLE_Vecino"))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void propagaElRolSingularQueAceptoElConverter() throws Exception {
         when(requestsProxyService.getById("id-1", "func-1", "Funcionario"))
                 .thenReturn(ResponseEntity.ok(Map.of(

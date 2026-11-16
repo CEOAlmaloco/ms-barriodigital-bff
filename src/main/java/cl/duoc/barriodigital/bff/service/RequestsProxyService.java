@@ -317,6 +317,72 @@ public class RequestsProxyService {
                         .body(response.bodyTo(MAP_TYPE)));
     }
 
+    /** Cancela el trámite del titular (EP3-76 / EP3-77). Sin body. */
+    public ResponseEntity<Map<String, Object>> cancel(String id, String userId, String roles, String userName) {
+        RequestBodySpec spec = requestsRestClient.post()
+                .uri("/api/requests/{id}/cancel", id)
+                .header(HEADER_USER_ID, userId)
+                .header(HEADER_USER_ROLES, nullToEmpty(roles));
+        if (userName != null && !userName.isBlank()) {
+            spec = spec.header(HEADER_USER_NAME, userName.trim());
+        }
+        return spec.exchange((request, response) -> ResponseEntity
+                .status(response.getStatusCode())
+                .contentType(resolveContentType(response.getHeaders().getContentType()))
+                .body(response.bodyTo(MAP_TYPE)));
+    }
+
+    /** Encuesta de satisfacción del titular (EP3-74 / EP3-77). */
+    public ResponseEntity<Map<String, Object>> rate(
+            String id, Map<String, Object> body, String userId, String roles, String userName
+    ) {
+        RequestBodySpec spec = requestsRestClient.post()
+                .uri("/api/requests/{id}/rating", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HEADER_USER_ID, userId)
+                .header(HEADER_USER_ROLES, nullToEmpty(roles));
+        if (userName != null && !userName.isBlank()) {
+            spec = spec.header(HEADER_USER_NAME, userName.trim());
+        }
+        return spec.body(body).exchange((request, response) -> ResponseEntity
+                .status(response.getStatusCode())
+                .contentType(resolveContentType(response.getHeaders().getContentType()))
+                .body(response.bodyTo(MAP_TYPE)));
+    }
+
+    /** Posibles duplicados antes del alta; solo Vecino (EP3-75 / EP3-77). */
+    public ResponseEntity<Object> duplicatesForNew(
+            String procedureType, String latitude, String longitude, String sector, String userId, String roles
+    ) {
+        String uri = UriComponentsBuilder.fromPath("/api/requests/duplicates")
+                .queryParamIfPresent("procedureType", Optional.ofNullable(blankToNull(procedureType)))
+                .queryParamIfPresent("latitude", Optional.ofNullable(blankToNull(latitude)))
+                .queryParamIfPresent("longitude", Optional.ofNullable(blankToNull(longitude)))
+                .queryParamIfPresent("sector", Optional.ofNullable(blankToNull(sector)))
+                .build(true)
+                .toUriString();
+        return requestsRestClient.get()
+                .uri(uri)
+                .header(HEADER_USER_ID, userId)
+                .header(HEADER_USER_ROLES, nullToEmpty(roles))
+                .exchange((request, response) -> ResponseEntity
+                        .status(response.getStatusCode())
+                        .contentType(resolveContentType(response.getHeaders().getContentType()))
+                        .body(response.bodyTo(PAGE_TYPE)));
+    }
+
+    /** Posibles duplicados de un trámite ingresado; Funcionario/Admin (EP3-75 / EP3-77). */
+    public ResponseEntity<Object> duplicatesForRequest(String id, String userId, String roles) {
+        return requestsRestClient.get()
+                .uri("/api/requests/{id}/duplicates", id)
+                .header(HEADER_USER_ID, userId)
+                .header(HEADER_USER_ROLES, nullToEmpty(roles))
+                .exchange((request, response) -> ResponseEntity
+                        .status(response.getStatusCode())
+                        .contentType(resolveContentType(response.getHeaders().getContentType()))
+                        .body(response.bodyTo(PAGE_TYPE)));
+    }
+
     private static String listUri(
             String path,
             String status,

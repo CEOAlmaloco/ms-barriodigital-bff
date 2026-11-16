@@ -7,6 +7,7 @@ import cl.duoc.barriodigital.bff.web.dto.AssignRequestDto;
 import cl.duoc.barriodigital.bff.web.dto.ChangeStatusDto;
 import cl.duoc.barriodigital.bff.web.dto.CitizenCommentDto;
 import cl.duoc.barriodigital.bff.web.dto.CreateRequestDto;
+import cl.duoc.barriodigital.bff.web.dto.RateRequestDto;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -180,6 +181,19 @@ public class RequestsController {
                 resolveUserId(jwt), resolveRoles(jwt));
     }
 
+    /** Posibles duplicados antes del alta; solo Vecino (EP3-75 / EP3-77). */
+    @GetMapping("/duplicates")
+    public ResponseEntity<Object> duplicatesForNew(
+            @RequestParam(required = false) String procedureType,
+            @RequestParam(required = false) String latitude,
+            @RequestParam(required = false) String longitude,
+            @RequestParam(required = false) String sector,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return requestsProxyService.duplicatesForNew(
+                procedureType, latitude, longitude, sector, resolveUserId(jwt), resolveRoles(jwt));
+    }
+
     /** Preferencias de aviso del usuario autenticado (EP3-65 / EP3-69). */
     @GetMapping("/me/notification-preferences")
     public ResponseEntity<Map<String, Object>> getNotificationPreferences(@AuthenticationPrincipal Jwt jwt) {
@@ -305,6 +319,41 @@ public class RequestsController {
             @AuthenticationPrincipal Jwt jwt
     ) {
         return requestsProxyService.actividad(id, resolveUserId(jwt), resolveRoles(jwt));
+    }
+
+    /** Cancela el trámite; solo Vecino titular en INGRESADO (EP3-76 / EP3-77). */
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<Map<String, Object>> cancel(
+            @PathVariable String id,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return requestsProxyService.cancel(
+                id, resolveUserId(jwt), resolveRoles(jwt), encodeUserName(resolveUserName(jwt)));
+    }
+
+    /** Encuesta de satisfacción; solo Vecino titular en RESUELTO (EP3-74 / EP3-77). */
+    @PostMapping("/{id}/rating")
+    public ResponseEntity<Map<String, Object>> rate(
+            @PathVariable String id,
+            @RequestBody RateRequestDto body,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("score", body == null ? null : body.score());
+        if (body != null && body.comment() != null) {
+            payload.put("comment", body.comment());
+        }
+        return requestsProxyService.rate(
+                id, payload, resolveUserId(jwt), resolveRoles(jwt), encodeUserName(resolveUserName(jwt)));
+    }
+
+    /** Posibles duplicados de un trámite ingresado; Funcionario/Admin (EP3-75 / EP3-77). */
+    @GetMapping("/{id}/duplicates")
+    public ResponseEntity<Object> duplicatesForRequest(
+            @PathVariable String id,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return requestsProxyService.duplicatesForRequest(id, resolveUserId(jwt), resolveRoles(jwt));
     }
 
     /** Comentario del vecino titular (EP3-64 / EP3-69). */
