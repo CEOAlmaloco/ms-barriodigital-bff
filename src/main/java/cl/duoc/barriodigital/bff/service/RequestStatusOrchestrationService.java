@@ -160,26 +160,37 @@ public class RequestStatusOrchestrationService {
         return response;
     }
 
-    /** Reconoce un rechazo esperado de requests para saber que este intento no se guardó. */
+    /**
+     * Reconoce un rechazo esperado de requests por {@code code} (EP3-67 / EP3-69).
+     * Incluye {@code REQUEST_BODY_INVALID} (p. ej. motivo de más de 500 caracteres) para liberar el cupo.
+     */
     private static boolean recognizedRejection(ResponseEntity<Map<String, Object>> response, String path) {
         Map<String, Object> body = response.getBody();
         int status = response.getStatusCode().value();
         if (body == null || !(body.get("status") instanceof Number bodyStatus)
                 || bodyStatus.intValue() != status || !path.equals(body.get("path"))
-                || !(body.get("message") instanceof String message)) {
+                || !(body.get("code") instanceof String code) || code.isBlank()) {
             return false;
         }
         return switch (status) {
-            case 400 -> message.equals("status es obligatorio")
-                    || message.equals("status invalido. Valores: INGRESADO, ADMITIDO, EN_GESTION, EN_TERRENO, RESUELTO, RECHAZADO")
-                    || message.equals("rejectionReason es obligatorio cuando el estado es RECHAZADO")
-                    || message.equals("rejectionReason no puede superar 500 caracteres")
-                    || message.equals("Falta identidad del usuario (header X-User-Id). Debe venir del BFF tras validar el JWT.")
-                    || message.equals(MSG_ADMIN_INTERVENTION);
-            case 403 -> message.equals("Solo un Funcionario puede cambiar el estado")
-                    || message.equals(MSG_NOT_ASSIGNEE);
-            case 404 -> message.equals("Tramite no encontrado");
-            case 409 -> message.matches("No se puede pasar de (INGRESADO|ADMITIDO|EN_GESTION|EN_TERRENO|RESUELTO|RECHAZADO) a ADMITIDO");
+            case 400 -> switch (code) {
+                case "STATUS_REQUIRED",
+                        "STATUS_INVALID",
+                        "CANCEL_REQUIRES_CANCEL_ENDPOINT",
+                        "REJECTION_REASON_REQUIRED",
+                        "REJECTION_REASON_TOO_LONG",
+                        "INTERVENTION_REASON_REQUIRED",
+                        "INTERVENTION_REASON_TOO_LONG",
+                        "USER_ID_REQUIRED",
+                        "REQUEST_BODY_INVALID" -> true;
+                default -> false;
+            };
+            case 403 -> switch (code) {
+                case "STATUS_CHANGE_FORBIDDEN", "NOT_ASSIGNEE", "ROLE_REQUIRED", "SINGLE_ROLE_REQUIRED" -> true;
+                default -> false;
+            };
+            case 404 -> "REQUEST_NOT_FOUND".equals(code);
+            case 409 -> "STATUS_TRANSITION_NOT_ALLOWED".equals(code);
             default -> false;
         };
     }

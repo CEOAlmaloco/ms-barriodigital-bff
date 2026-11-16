@@ -289,6 +289,7 @@ class RequestsControllerTest {
                 eq("norte"),
                 eq("me"),
                 eq("true"),
+                eq("true"),
                 eq("dev-user"),
                 eq("Vecino")
         )).thenReturn(ResponseEntity.ok(Map.of(
@@ -310,7 +311,8 @@ class RequestsControllerTest {
                         .param("procedureType", "bache")
                         .param("sector", "norte")
                         .param("assignee", "me")
-                        .param("open", "true"))
+                        .param("open", "true")
+                        .param("contactDue", "true"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].id").value("1"))
                 .andExpect(jsonPath("$.totalElements").value(1));
