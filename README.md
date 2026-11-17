@@ -15,6 +15,10 @@ Contrato: `barriodigital-infra` → `docs/decisiones.md`.
 | `GET /api/admin/ping` | JWT | **Admin** (si no → **403**) |
 | `POST /api/requests` | JWT | cualquier rol autenticado → proxy a requests (JSON o multipart con imagen opcional) |
 | `GET /api/requests/{id}/attachment` | JWT | imagen privada; requests valida titular o personal |
+| `GET /api/requests/{id}/actividad` | JWT | historial filtrado por rol (proxy a requests) |
+| `POST /api/requests/{id}/gestiones` | JWT | **Funcionario** responsable o **Admin** con intervención → proxy |
+| `POST /api/requests/{id}/comments` | JWT | comentario del titular (JSON o multipart con foto) |
+| `GET /api/requests/{id}/comments/{commentId}/attachment` | JWT | foto del comentario; mismas reglas que `/attachment` |
 | `GET /api/requests` | JWT | listado (filtros `status`, `from`, `to`) |
 | `GET /api/requests/meta/transitions` | JWT | proxy del mapa de transiciones |
 | `GET /api/requests/{id}` | JWT | detalle |
@@ -22,6 +26,8 @@ Contrato: `barriodigital-infra` → `docs/decisiones.md`.
 | `POST /api/catalog/procedures` | JWT | **Admin** (si no → **403**) |
 | `PUT /api/catalog/procedures/{value}` | JWT | **Admin** (si no → **403**) |
 | `PUT /api/requests/{id}/status` | JWT | **Funcionario** (si no → **403**). Proxy a requests. |
+
+`/actividad`, `/gestiones` y `/attachment` no tienen ruta literal en API Gateway: pasan por `/{proxy+}` con authorizer JWT (EP3-13).
 
 ## Proxy a requests (EP1-15)
 
