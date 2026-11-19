@@ -4,7 +4,19 @@ BFF de **BarrioDigital**: valida el JWT de Microsoft Entra ID y autoriza por App
 
 Puerto: **8080**
 
-Contrato: `barriodigital-infra` → `docs/decisiones.md`.
+Contrato: `barriodigital-infra` → `docs/contratos/` (índice) y `docs/decisiones.md` (identidad).
+
+
+<!-- EP3.5-01 contratos -->
+## Contratos
+
+Contratos vigentes en `barriodigital-infra` (EP3.5-01). Índice: [docs/contratos](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/contratos/README.md).
+
+- [JWT / borde](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/contratos/jwt.md)
+- [Capacidades por rol](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/contratos/capacidades-roles.md)
+- [Report y audit (proxy)](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/contratos/report-audit.md)
+- [mq-admin (proxy)](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/contratos/mq-admin.md)
+- [kafka-admin (proxy)](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/contratos/kafka-admin.md)
 
 ## Endpoints
 
@@ -327,4 +339,4 @@ Release no identifica la jornada original ni aplica reset: una compensación de 
 
 Los logs de coordinación contienen fase, id de trámite, tipo, intento local, HTTP conocido, categoría y resultado de compensación. No incluyen tokens, headers completos, payload, solicitante, dirección ni motivo. Los logs no recuperan cupos.
 
-Pruebas: `.\mvnw.cmd verify`, con Mockito, MockMvc y MockRestServiceServer. Los mocks comprueban orden y clasificación, no integración real. La concurrencia de Requests se prueba con transacciones independientes en H2; falta validarla en Oracle desplegado. El documento compartido `barriodigital-infra/docs/decisiones.md` requiere una actualización coordinada sobre rechazos confirmados, incertidumbre, códigos y límites; no se modifica en esta tarea.
+Pruebas: `.\mvnw.cmd verify`, con Mockito, MockMvc y MockRestServiceServer. Los mocks comprueban orden y clasificación, no integración real. La concurrencia de Requests se prueba con transacciones independientes en H2; falta validarla en Oracle desplegado. El documento compartido `barriodigital-infra/docs/contratos/README.md` requiere una actualización coordinada sobre rechazos confirmados, incertidumbre, códigos y límites; no se modifica en esta tarea.
