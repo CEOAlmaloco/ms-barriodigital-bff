@@ -9,6 +9,10 @@ server:
 spring:
   application:
     name: ms-barriodigital-bff
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
   config:
     import: optional:file:.env[.properties]
   security:
@@ -33,6 +37,15 @@ barriodigital:
     base-url: ${CATALOG_BASE_URL:http://localhost:8082}
   mq-admin:
     base-url: ${MQ_ADMIN_BASE_URL:http://localhost:8084}
+  kafka-admin:
+    base-url: ${KAFKA_ADMIN_BASE_URL:http://localhost:8085}
+  report:
+    base-url: ${REPORT_BASE_URL:http://localhost:8086}
+  audit:
+    base-url: ${AUDIT_BASE_URL:http://localhost:8087}
+  security:
+    # Token compartido con mq-admin y kafka-admin (EP3-43). Nunca viaja al browser.
+    internal-token: ${INTERNAL_TOKEN:}
 
 management:
   endpoints:

@@ -13,7 +13,12 @@ Contrato: `barriodigital-infra` → `docs/decisiones.md`.
 | `GET /actuator/health` | público | — |
 | `GET /api/ping` | JWT | cualquier rol autenticado |
 | `GET /api/admin/ping` | JWT | **Admin** (si no → **403**) |
-| `POST /api/requests` | JWT | cualquier rol autenticado → proxy a requests |
+| `POST /api/requests` | JWT | cualquier rol autenticado → proxy a requests (JSON o multipart con imagen opcional) |
+| `GET /api/requests/{id}/attachment` | JWT | imagen privada; requests valida titular o personal |
+| `GET /api/requests/{id}/actividad` | JWT | historial filtrado por rol (proxy a requests) |
+| `POST /api/requests/{id}/gestiones` | JWT | **Funcionario** responsable o **Admin** con intervención → proxy |
+| `POST /api/requests/{id}/comments` | JWT | comentario del titular (JSON o multipart con foto) |
+| `GET /api/requests/{id}/comments/{commentId}/attachment` | JWT | foto del comentario; mismas reglas que `/attachment` |
 | `GET /api/requests` | JWT | listado (filtros `status`, `from`, `to`) |
 | `GET /api/requests/meta/transitions` | JWT | proxy del mapa de transiciones |
 | `GET /api/requests/{id}` | JWT | detalle |
@@ -21,6 +26,8 @@ Contrato: `barriodigital-infra` → `docs/decisiones.md`.
 | `POST /api/catalog/procedures` | JWT | **Admin** (si no → **403**) |
 | `PUT /api/catalog/procedures/{value}` | JWT | **Admin** (si no → **403**) |
 | `PUT /api/requests/{id}/status` | JWT | **Funcionario** (si no → **403**). Proxy a requests. |
+
+`/actividad`, `/gestiones` y `/attachment` no tienen ruta literal en API Gateway: pasan por `/{proxy+}` con authorizer JWT (EP3-13).
 
 ## Proxy a requests (EP1-15)
 
@@ -55,6 +62,8 @@ curl.exe -i -X POST http://localhost:8080/api/requests `
 
 Si requests responde 400 o 404, el BFF **conserva** ese status (no lo tapa con 500).
 
+La creación también admite `multipart/form-data` con `request` (JSON) y una parte `attachment` opcional. Se limita a 5 MB y el servicio requests valida y normaliza los bytes; WebP se convierte a PNG en el frontend. La descarga pasa por `GET /api/requests/{id}/attachment`, lleva los headers de identidad derivados del JWT y se devuelve con `Cache-Control: private, no-store` y `X-Content-Type-Options: nosniff`.
+
 ### Tipo de trámite validado contra catalog
 
 Antes de reenviar `POST /api/requests`, el BFF pide `GET /api/catalog/procedures` y busca el `procedureType` del body (recortado y en minúsculas) en el campo `value`. El body que llega a requests no se modifica. El resto de rutas de requests no consulta catalog.
@@ -86,9 +95,10 @@ El BFF arma el header `X-User-Roles` desde el claim `roles` del token y se lo ma
 El proxy de catálogo conserva los estados HTTP, pero reemplaza el cuerpo de cualquier 5xx por un mensaje genérico: no reenvía SQL, excepciones ni trazas del servicio interno. Los errores de negocio 400/403/404/409 mantienen su contrato.
 Body de alta (sin `title`): `description`, `procedureType`, `address`.  
 El BFF manda `X-User-Id` (oid/sub del JWT) y `X-User-Roles` a requests.
-En el POST de alta manda además `X-User-Name`, leído del claim `name` del JWT y, si no viene, de `preferred_username`. El nombre no va en el body. GET, listado y cambio de estado no llevan ese header: requests solo lo necesita al crear el snapshot.  
+En el POST de alta manda además `X-User-Name`, leído del claim `name` del JWT y, si no viene, de `preferred_username`. El nombre no va en el body. Todas las demás llamadas a requests, también las lecturas, llevan el mismo nombre codificado en URL: requests lo usa para registrar al personal en `staff_member` en cada llamada (EP3-05, sección 5.1), y sin él la lista de funcionarios mostraría el oid. Lo agrega `RequestsUserNameInterceptor` en el cliente de requests, sin cambiar un header que la llamada ya puso; sin JWT (perfil dev) no se agrega.  
 En ese mismo POST manda `X-User-Email`, leído del claim `email` y, si no viene, de `preferred_username`. Un email enviado en el body se ignora. Sin ninguno de los dos claims el header va vacío y requests guarda `null`.  
 En ese mismo POST manda `X-Procedure-Label` con el `label` que catalog devolvió para el tipo validado. Va codificado en URL (UTF-8) con `UriUtils.encode`: el espacio queda como `%20` y el `+` como `%2B` (ej. `Alumbrado público` viaja como `Alumbrado%20p%C3%BAblico`). Requests lo decodifica y lo guarda como `procedureLabel`. Si el tipo no trae `label` en catalog, el header no se manda. El body que se reenvía no cambia.  
+En ese mismo POST manda `X-Procedure-Sla-Days` con el `slaBusinessDays` del tipo validado. Si el tipo no tiene plazo, el header no se manda.  
 Filtros `from`/`to`: fecha `yyyy-MM-dd`.
 
 Cambio de estado (EP1.5-06). Vecino/Admin/Auditor → **403** en el BFF (no llega a requests).  
@@ -108,6 +118,17 @@ curl.exe -i -X PUT http://localhost:8080/api/requests/ID/status `
 Variable: `MQ_ADMIN_BASE_URL` (default `http://localhost:8084`). En el compose de apps es `http://mq-admin:8084`.
 
 El BFF arma `X-User-Roles` desde el claim `roles` del token, igual que en catalog. mq-admin no recibe el JWT. La ruta, el query string y el cuerpo se copian. Un 400, 404 o 409 de mq-admin se devuelve tal cual. Si no conecta o no responde a tiempo, el BFF responde **503** con `{status, error, message, path}`, no 502. El cliente corta a los **2 s** de conexión y **3 s** de lectura, como el de catalog.
+
+## Proxy a kafka-admin, report y audit (EP3-44)
+
+| Ruta | Roles | Downstream | Headers |
+|---|---|---|---|
+| `/api/kafka/**` | Admin | `KAFKA_ADMIN_BASE_URL` | identidad + `X-Internal-Token` + `X-Source-Ip` |
+| `/api/report/kpis`, `/api/report/top-procedures` | Admin, Auditor | `REPORT_BASE_URL` | `X-User-Id`, `X-User-Roles` |
+| `/api/report/sla`, `/api/report/sla/**`, `/api/report/map-points` | Funcionario, Admin, Auditor | `REPORT_BASE_URL` | `X-User-Id`, `X-User-Roles` |
+| `/api/audit/**` | Admin, Auditor | `AUDIT_BASE_URL` | `X-User-Id`, `X-User-Roles` |
+
+Sin JWT → **401**. Rol incorrecto → **403**. Servicio caído → **503** con el cuerpo de `BffExceptionHandler`. Timeouts: report/audit como catalog (2 s / 3 s); kafka-admin lectura **25 s**.
 
 ## Arranque local sin Azure (solo desarrollo)
 
@@ -238,6 +259,10 @@ La imagen no incluye secretos. Entra y la URL de requests van por env.
 | `AZURE_AUDIENCES` | `api://a0773f3e-...` y/ o el GUID `a0773f3e-...` (coma-separados) |
 | `REQUESTS_BASE_URL` | `http://host.docker.internal:8081` (local) o `http://requests:8081` (compose) |
 | `MQ_ADMIN_BASE_URL` | `http://localhost:8084` (local) o `http://mq-admin:8084` (compose) |
+| `KAFKA_ADMIN_BASE_URL` | `http://localhost:8085` (local) o `http://kafka-admin:8085` (compose) |
+| `REPORT_BASE_URL` | `http://localhost:8086` (local) o `http://report:8086` (compose) |
+| `AUDIT_BASE_URL` | `http://localhost:8087` (local) o `http://audit:8087` (compose) |
+| `INTERNAL_TOKEN` | mismo valor que mq-admin y kafka-admin |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:4200` |
 
 ```powershell
