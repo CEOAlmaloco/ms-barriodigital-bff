@@ -248,6 +248,11 @@ El access token debe traer `roles` (App Roles de Entra): `Admin` | `Funcionario`
 | Claim `roles` → `ROLE_*` | `EntraRolesJwtConverter` |
 | `/api/admin/**` | `hasRole("Admin")` → 403 JSON si no |
 
+## Contratos verificables
+
+- `contracts/openapi.json`: contrato HTTP del servicio, generado desde los controladores. `OpenApiContractTest` falla si una ruta, un parámetro o un cuerpo cambia sin actualizarlo. Para regenerarlo después de revisar el cambio: `./mvnw test -Dtest=OpenApiContractTest -Dopenapi.update=true`.
+- La CI corre las pruebas, busca secretos en los commits nuevos con gitleaks y escanea la imagen con Trivy. Falla si el cambio agrega una vulnerabilidad crítica que la rama destino no tenía; las existentes quedan en el resumen del job.
+
 ## Tests
 
 ```powershell
