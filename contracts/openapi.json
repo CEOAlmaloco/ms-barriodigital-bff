@@ -1,0 +1,1725 @@
+{
+  "openapi" : "3.0.1",
+  "info" : {
+    "title" : "ms-barriodigital-bff",
+    "version" : "1"
+  },
+  "paths" : {
+    "/api/admin/ping" : {
+      "get" : {
+        "operationId" : "adminPing",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "jwt",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/Jwt"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : {
+                    "type" : "object"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-controller" ]
+      }
+    },
+    "/api/audit/**" : {
+      "delete" : {
+        "operationId" : "proxy_26",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "audit-controller" ]
+      },
+      "get" : {
+        "operationId" : "proxy_21",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "audit-controller" ]
+      },
+      "head" : {
+        "operationId" : "proxy_22",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "audit-controller" ]
+      },
+      "options" : {
+        "operationId" : "proxy_27",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "audit-controller" ]
+      },
+      "patch" : {
+        "operationId" : "proxy_25",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "audit-controller" ]
+      },
+      "post" : {
+        "operationId" : "proxy_23",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "audit-controller" ]
+      },
+      "put" : {
+        "operationId" : "proxy_24",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "audit-controller" ]
+      }
+    },
+    "/api/catalog/procedures" : {
+      "get" : {
+        "operationId" : "procedures",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "catalog-controller" ]
+      },
+      "post" : {
+        "operationId" : "create",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "additionalProperties" : {
+                  "type" : "object"
+                }
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : {
+                    "type" : "object"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "catalog-controller" ]
+      }
+    },
+    "/api/catalog/procedures/{value}" : {
+      "put" : {
+        "operationId" : "update",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "value",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "additionalProperties" : {
+                  "type" : "object"
+                }
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : {
+                    "type" : "object"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "catalog-controller" ]
+      }
+    },
+    "/api/kafka/**" : {
+      "delete" : {
+        "operationId" : "proxy_19",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "kafka-admin-controller" ]
+      },
+      "get" : {
+        "operationId" : "proxy_14",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "kafka-admin-controller" ]
+      },
+      "head" : {
+        "operationId" : "proxy_15",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "kafka-admin-controller" ]
+      },
+      "options" : {
+        "operationId" : "proxy_20",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "kafka-admin-controller" ]
+      },
+      "patch" : {
+        "operationId" : "proxy_18",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "kafka-admin-controller" ]
+      },
+      "post" : {
+        "operationId" : "proxy_16",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "kafka-admin-controller" ]
+      },
+      "put" : {
+        "operationId" : "proxy_17",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "kafka-admin-controller" ]
+      }
+    },
+    "/api/mq/**" : {
+      "delete" : {
+        "operationId" : "proxy_12",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "mq-admin-controller" ]
+      },
+      "get" : {
+        "operationId" : "proxy_7",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "mq-admin-controller" ]
+      },
+      "head" : {
+        "operationId" : "proxy_8",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "mq-admin-controller" ]
+      },
+      "options" : {
+        "operationId" : "proxy_13",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "mq-admin-controller" ]
+      },
+      "patch" : {
+        "operationId" : "proxy_11",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "mq-admin-controller" ]
+      },
+      "post" : {
+        "operationId" : "proxy_9",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "mq-admin-controller" ]
+      },
+      "put" : {
+        "operationId" : "proxy_10",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "mq-admin-controller" ]
+      }
+    },
+    "/api/ping" : {
+      "get" : {
+        "operationId" : "ping",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "jwt",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/Jwt"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : {
+                    "type" : "object"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "ping-controller" ]
+      }
+    },
+    "/api/report/**" : {
+      "delete" : {
+        "operationId" : "proxy_5",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "report-controller" ]
+      },
+      "get" : {
+        "operationId" : "proxy",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "report-controller" ]
+      },
+      "head" : {
+        "operationId" : "proxy_1",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "report-controller" ]
+      },
+      "options" : {
+        "operationId" : "proxy_6",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "report-controller" ]
+      },
+      "patch" : {
+        "operationId" : "proxy_4",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "report-controller" ]
+      },
+      "post" : {
+        "operationId" : "proxy_2",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "report-controller" ]
+      },
+      "put" : {
+        "operationId" : "proxy_3",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "report-controller" ]
+      }
+    },
+    "/api/requests" : {
+      "get" : {
+        "operationId" : "list",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "status",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "from",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "to",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "procedureType",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sector",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "assignee",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "open",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "contactDue",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "jwt",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/Jwt"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "requests-controller" ]
+      },
+      "post" : {
+        "operationId" : "createWithAttachment_1",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "jwt",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/Jwt"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateRequestDto"
+              }
+            },
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "attachment" : {
+                    "type" : "string",
+                    "format" : "binary"
+                  },
+                  "jwt" : {
+                    "$ref" : "#/components/schemas/Jwt"
+                  },
+                  "request" : {
+                    "$ref" : "#/components/schemas/CreateRequestDto"
+                  }
+                },
+                "required" : [ "request" ]
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : {
+                    "type" : "object"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "requests-controller" ]
+      }
+    },
+    "/api/requests/assignees" : {
+      "get" : {
+        "operationId" : "assignees",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "jwt",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/Jwt"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "requests-controller" ]
+      }
+    },
+    "/api/requests/duplicates" : {
+      "get" : {
+        "operationId" : "duplicatesForNew",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "procedureType",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "latitude",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "longitude",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sector",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "jwt",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/Jwt"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "requests-controller" ]
+      }
+    },
+    "/api/requests/export" : {
+      "get" : {
+        "operationId" : "export",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "status",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "from",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "to",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "procedureType",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sector",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "assignee",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "open",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "contactDue",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "jwt",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/Jwt"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "requests-controller" ]
+      }
+    },
+    "/api/requests/me/notification-preferences" : {
+      "get" : {
+        "operationId" : "getNotificationPreferences",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "jwt",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/Jwt"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : {
+                    "type" : "object"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "requests-controller" ]
+      },
+      "put" : {
+        "operationId" : "putNotificationPreferences",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "jwt",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/Jwt"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "additionalProperties" : {
+                  "type" : "object"
+                }
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : {
+                    "type" : "object"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "requests-controller" ]
+      }
+    },
+    "/api/requests/meta/transitions" : {
+      "get" : {
+        "operationId" : "transitions",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "string"
+                    }
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "requests-controller" ]
+      }
+    },
+    "/api/requests/{id}" : {
+      "get" : {
+        "operationId" : "getById",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "jwt",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/Jwt"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : {
+                    "type" : "object"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "requests-controller" ]
+      }
+    },
+    "/api/requests/{id}/actividad" : {
+      "get" : {
+        "operationId" : "actividad",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "jwt",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/Jwt"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : {
+                    "type" : "object"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "requests-controller" ]
+      }
+    },
+    "/api/requests/{id}/assignee" : {
+      "put" : {
+        "operationId" : "assign",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "jwt",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/Jwt"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AssignRequestDto"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : {
+                    "type" : "object"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "requests-controller" ]
+      }
+    },
+    "/api/requests/{id}/attachment" : {
+      "get" : {
+        "operationId" : "getAttachment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "jwt",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/Jwt"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "requests-controller" ]
+      }
+    },
+    "/api/requests/{id}/cancel" : {
+      "post" : {
+        "operationId" : "cancel",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "jwt",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/Jwt"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : {
+                    "type" : "object"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "requests-controller" ]
+      }
+    },
+    "/api/requests/{id}/comments" : {
+      "post" : {
+        "operationId" : "commentWithAttachment_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "jwt",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/Jwt"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CitizenCommentDto"
+              }
+            },
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "attachment" : {
+                    "type" : "string",
+                    "format" : "binary"
+                  },
+                  "comment" : {
+                    "$ref" : "#/components/schemas/CitizenCommentDto"
+                  },
+                  "jwt" : {
+                    "$ref" : "#/components/schemas/Jwt"
+                  }
+                },
+                "required" : [ "comment" ]
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : {
+                    "type" : "object"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "requests-controller" ]
+      }
+    },
+    "/api/requests/{id}/comments/{commentId}/attachment" : {
+      "get" : {
+        "operationId" : "getCommentAttachment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "commentId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "jwt",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/Jwt"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "requests-controller" ]
+      }
+    },
+    "/api/requests/{id}/duplicates" : {
+      "get" : {
+        "operationId" : "duplicatesForRequest",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "jwt",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/Jwt"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "requests-controller" ]
+      }
+    },
+    "/api/requests/{id}/gestiones" : {
+      "post" : {
+        "operationId" : "registrarGestion",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "jwt",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/Jwt"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "additionalProperties" : {
+                  "type" : "object"
+                }
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : {
+                    "type" : "object"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "requests-controller" ]
+      }
+    },
+    "/api/requests/{id}/rating" : {
+      "post" : {
+        "operationId" : "rate",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "jwt",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/Jwt"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RateRequestDto"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : {
+                    "type" : "object"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "requests-controller" ]
+      }
+    },
+    "/api/requests/{id}/status" : {
+      "put" : {
+        "operationId" : "updateStatus",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "jwt",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/Jwt"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ChangeStatusDto"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : {
+                    "type" : "object"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "requests-controller" ]
+      }
+    },
+    "/api/requests/{id}/take" : {
+      "post" : {
+        "operationId" : "take",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "jwt",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/Jwt"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : {
+                    "type" : "object"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "requests-controller" ]
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "AssignRequestDto" : {
+        "required" : [ "assigneeId" ],
+        "type" : "object",
+        "properties" : {
+          "assigneeId" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "maxLength" : 500,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        }
+      },
+      "ChangeStatusDto" : {
+        "type" : "object",
+        "properties" : {
+          "interventionReason" : {
+            "type" : "string"
+          },
+          "rejectionReason" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        }
+      },
+      "CitizenCommentDto" : {
+        "type" : "object",
+        "properties" : {
+          "text" : {
+            "type" : "string"
+          }
+        }
+      },
+      "CreateRequestDto" : {
+        "required" : [ "address", "description", "procedureType" ],
+        "type" : "object",
+        "properties" : {
+          "address" : {
+            "maxLength" : 300,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "description" : {
+            "maxLength" : 2000,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "latitude" : {
+            "type" : "number",
+            "format" : "double"
+          },
+          "locationPrecision" : {
+            "maxLength" : 20,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "locationReference" : {
+            "maxLength" : 200,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "longitude" : {
+            "type" : "number",
+            "format" : "double"
+          },
+          "procedureType" : {
+            "maxLength" : 100,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "sector" : {
+            "maxLength" : 40,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        }
+      },
+      "Jwt" : {
+        "type" : "object",
+        "properties" : {
+          "audience" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "claims" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "object"
+            }
+          },
+          "expiresAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "headers" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "object"
+            }
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "issuedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "issuer" : {
+            "type" : "string",
+            "format" : "url"
+          },
+          "notBefore" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "subject" : {
+            "type" : "string"
+          },
+          "tokenValue" : {
+            "type" : "string"
+          }
+        }
+      },
+      "RateRequestDto" : {
+        "type" : "object",
+        "properties" : {
+          "comment" : {
+            "type" : "string"
+          },
+          "score" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      }
+    }
+  }
+}
