@@ -238,6 +238,11 @@ El access token debe traer `roles` (App Roles de Entra): `Admin` | `Funcionario`
 | Claim `roles` → `ROLE_*` | `EntraRolesJwtConverter` |
 | `/api/admin/**` | `hasRole("Admin")` → 403 JSON si no |
 
+## Contratos verificables
+
+- `contracts/openapi.json`: contrato HTTP del servicio, generado desde los controladores. `OpenApiContractTest` falla si una ruta, un parámetro o un cuerpo cambia sin actualizarlo. Para regenerarlo después de revisar el cambio: `./mvnw test -Dtest=OpenApiContractTest -Dopenapi.update=true`.
+- La CI corre las pruebas, busca secretos en los commits nuevos con gitleaks y escanea la imagen con Trivy. Falla si el cambio agrega una vulnerabilidad crítica que la rama destino no tenía; las existentes quedan en el resumen del job.
+
 ## Tests
 
 ```powershell
@@ -328,8 +333,3 @@ Release no identifica la jornada original ni aplica reset: una compensación de 
 Los logs de coordinación contienen fase, id de trámite, tipo, intento local, HTTP conocido, categoría y resultado de compensación. No incluyen tokens, headers completos, payload, solicitante, dirección ni motivo. Los logs no recuperan cupos.
 
 Pruebas: `.\mvnw.cmd verify`, con Mockito, MockMvc y MockRestServiceServer. Los mocks comprueban orden y clasificación, no integración real. La concurrencia de Requests se prueba con transacciones independientes en H2; falta validarla en Oracle desplegado. El documento compartido `barriodigital-infra/docs/decisiones.md` requiere una actualización coordinada sobre rechazos confirmados, incertidumbre, códigos y límites; no se modifica en esta tarea.
-
-## Contratos verificables
-
-- `contracts/openapi.json`: contrato HTTP del servicio, generado desde los controladores. `OpenApiContractTest` falla si una ruta, un parámetro o un cuerpo cambia sin actualizarlo. Para regenerarlo después de revisar el cambio: `./mvnw test -Dtest=OpenApiContractTest -Dopenapi.update=true`.
-- La CI corre las pruebas, busca secretos en los commits nuevos con gitleaks y escanea la imagen con Trivy. Falla si el cambio agrega una vulnerabilidad crítica que la rama destino no tenía; las existentes quedan en el resumen del job.
