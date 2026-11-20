@@ -8,14 +8,6 @@
     "/api/admin/ping" : {
       "get" : {
         "operationId" : "adminPing",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "jwt",
-          "required" : true,
-          "schema" : {
-            "$ref" : "#/components/schemas/Jwt"
-          }
-        } ],
         "responses" : {
           "200" : {
             "content" : {
@@ -36,7 +28,7 @@
     },
     "/api/audit/**" : {
       "delete" : {
-        "operationId" : "proxy_26",
+        "operationId" : "delete_api_audit",
         "responses" : {
           "200" : {
             "content" : {
@@ -53,7 +45,7 @@
         "tags" : [ "audit-controller" ]
       },
       "get" : {
-        "operationId" : "proxy_21",
+        "operationId" : "get_api_audit",
         "responses" : {
           "200" : {
             "content" : {
@@ -70,7 +62,7 @@
         "tags" : [ "audit-controller" ]
       },
       "head" : {
-        "operationId" : "proxy_22",
+        "operationId" : "head_api_audit",
         "responses" : {
           "200" : {
             "content" : {
@@ -87,7 +79,7 @@
         "tags" : [ "audit-controller" ]
       },
       "options" : {
-        "operationId" : "proxy_27",
+        "operationId" : "options_api_audit",
         "responses" : {
           "200" : {
             "content" : {
@@ -104,7 +96,7 @@
         "tags" : [ "audit-controller" ]
       },
       "patch" : {
-        "operationId" : "proxy_25",
+        "operationId" : "patch_api_audit",
         "responses" : {
           "200" : {
             "content" : {
@@ -121,7 +113,7 @@
         "tags" : [ "audit-controller" ]
       },
       "post" : {
-        "operationId" : "proxy_23",
+        "operationId" : "post_api_audit",
         "responses" : {
           "200" : {
             "content" : {
@@ -138,7 +130,7 @@
         "tags" : [ "audit-controller" ]
       },
       "put" : {
-        "operationId" : "proxy_24",
+        "operationId" : "put_api_audit",
         "responses" : {
           "200" : {
             "content" : {
@@ -249,7 +241,7 @@
     },
     "/api/kafka/**" : {
       "delete" : {
-        "operationId" : "proxy_19",
+        "operationId" : "delete_api_kafka",
         "responses" : {
           "200" : {
             "content" : {
@@ -266,7 +258,7 @@
         "tags" : [ "kafka-admin-controller" ]
       },
       "get" : {
-        "operationId" : "proxy_14",
+        "operationId" : "get_api_kafka",
         "responses" : {
           "200" : {
             "content" : {
@@ -283,7 +275,7 @@
         "tags" : [ "kafka-admin-controller" ]
       },
       "head" : {
-        "operationId" : "proxy_15",
+        "operationId" : "head_api_kafka",
         "responses" : {
           "200" : {
             "content" : {
@@ -300,7 +292,7 @@
         "tags" : [ "kafka-admin-controller" ]
       },
       "options" : {
-        "operationId" : "proxy_20",
+        "operationId" : "options_api_kafka",
         "responses" : {
           "200" : {
             "content" : {
@@ -317,7 +309,7 @@
         "tags" : [ "kafka-admin-controller" ]
       },
       "patch" : {
-        "operationId" : "proxy_18",
+        "operationId" : "patch_api_kafka",
         "responses" : {
           "200" : {
             "content" : {
@@ -334,7 +326,7 @@
         "tags" : [ "kafka-admin-controller" ]
       },
       "post" : {
-        "operationId" : "proxy_16",
+        "operationId" : "post_api_kafka",
         "responses" : {
           "200" : {
             "content" : {
@@ -351,7 +343,7 @@
         "tags" : [ "kafka-admin-controller" ]
       },
       "put" : {
-        "operationId" : "proxy_17",
+        "operationId" : "put_api_kafka",
         "responses" : {
           "200" : {
             "content" : {
@@ -370,7 +362,7 @@
     },
     "/api/mq/**" : {
       "delete" : {
-        "operationId" : "proxy_12",
+        "operationId" : "delete_api_mq",
         "responses" : {
           "200" : {
             "content" : {
@@ -387,7 +379,7 @@
         "tags" : [ "mq-admin-controller" ]
       },
       "get" : {
-        "operationId" : "proxy_7",
+        "operationId" : "get_api_mq",
         "responses" : {
           "200" : {
             "content" : {
@@ -404,7 +396,7 @@
         "tags" : [ "mq-admin-controller" ]
       },
       "head" : {
-        "operationId" : "proxy_8",
+        "operationId" : "head_api_mq",
         "responses" : {
           "200" : {
             "content" : {
@@ -421,7 +413,7 @@
         "tags" : [ "mq-admin-controller" ]
       },
       "options" : {
-        "operationId" : "proxy_13",
+        "operationId" : "options_api_mq",
         "responses" : {
           "200" : {
             "content" : {
@@ -438,7 +430,7 @@
         "tags" : [ "mq-admin-controller" ]
       },
       "patch" : {
-        "operationId" : "proxy_11",
+        "operationId" : "patch_api_mq",
         "responses" : {
           "200" : {
             "content" : {
@@ -455,7 +447,7 @@
         "tags" : [ "mq-admin-controller" ]
       },
       "post" : {
-        "operationId" : "proxy_9",
+        "operationId" : "post_api_mq",
         "responses" : {
           "200" : {
             "content" : {
@@ -472,7 +464,7 @@
         "tags" : [ "mq-admin-controller" ]
       },
       "put" : {
-        "operationId" : "proxy_10",
+        "operationId" : "put_api_mq",
         "responses" : {
           "200" : {
             "content" : {
@@ -492,14 +484,6 @@
     "/api/ping" : {
       "get" : {
         "operationId" : "ping",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "jwt",
-          "required" : true,
-          "schema" : {
-            "$ref" : "#/components/schemas/Jwt"
-          }
-        } ],
         "responses" : {
           "200" : {
             "content" : {
@@ -520,7 +504,7 @@
     },
     "/api/report/**" : {
       "delete" : {
-        "operationId" : "proxy_5",
+        "operationId" : "delete_api_report",
         "responses" : {
           "200" : {
             "content" : {
@@ -537,7 +521,7 @@
         "tags" : [ "report-controller" ]
       },
       "get" : {
-        "operationId" : "proxy",
+        "operationId" : "get_api_report",
         "responses" : {
           "200" : {
             "content" : {
@@ -554,7 +538,7 @@
         "tags" : [ "report-controller" ]
       },
       "head" : {
-        "operationId" : "proxy_1",
+        "operationId" : "head_api_report",
         "responses" : {
           "200" : {
             "content" : {
@@ -571,7 +555,7 @@
         "tags" : [ "report-controller" ]
       },
       "options" : {
-        "operationId" : "proxy_6",
+        "operationId" : "options_api_report",
         "responses" : {
           "200" : {
             "content" : {
@@ -588,7 +572,7 @@
         "tags" : [ "report-controller" ]
       },
       "patch" : {
-        "operationId" : "proxy_4",
+        "operationId" : "patch_api_report",
         "responses" : {
           "200" : {
             "content" : {
@@ -605,7 +589,7 @@
         "tags" : [ "report-controller" ]
       },
       "post" : {
-        "operationId" : "proxy_2",
+        "operationId" : "post_api_report",
         "responses" : {
           "200" : {
             "content" : {
@@ -622,7 +606,7 @@
         "tags" : [ "report-controller" ]
       },
       "put" : {
-        "operationId" : "proxy_3",
+        "operationId" : "put_api_report",
         "responses" : {
           "200" : {
             "content" : {
@@ -726,13 +710,6 @@
           "schema" : {
             "type" : "string"
           }
-        }, {
-          "in" : "query",
-          "name" : "jwt",
-          "required" : true,
-          "schema" : {
-            "$ref" : "#/components/schemas/Jwt"
-          }
         } ],
         "responses" : {
           "200" : {
@@ -750,14 +727,6 @@
       },
       "post" : {
         "operationId" : "createWithAttachment_1",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "jwt",
-          "required" : true,
-          "schema" : {
-            "$ref" : "#/components/schemas/Jwt"
-          }
-        } ],
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -772,9 +741,6 @@
                   "attachment" : {
                     "type" : "string",
                     "format" : "binary"
-                  },
-                  "jwt" : {
-                    "$ref" : "#/components/schemas/Jwt"
                   },
                   "request" : {
                     "$ref" : "#/components/schemas/CreateRequestDto"
@@ -807,14 +773,6 @@
     "/api/requests/assignees" : {
       "get" : {
         "operationId" : "assignees",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "jwt",
-          "required" : true,
-          "schema" : {
-            "$ref" : "#/components/schemas/Jwt"
-          }
-        } ],
         "responses" : {
           "200" : {
             "content" : {
@@ -860,13 +818,6 @@
           "required" : false,
           "schema" : {
             "type" : "string"
-          }
-        }, {
-          "in" : "query",
-          "name" : "jwt",
-          "required" : true,
-          "schema" : {
-            "$ref" : "#/components/schemas/Jwt"
           }
         } ],
         "responses" : {
@@ -957,13 +908,6 @@
           "schema" : {
             "type" : "string"
           }
-        }, {
-          "in" : "query",
-          "name" : "jwt",
-          "required" : true,
-          "schema" : {
-            "$ref" : "#/components/schemas/Jwt"
-          }
         } ],
         "responses" : {
           "200" : {
@@ -984,14 +928,6 @@
     "/api/requests/me/notification-preferences" : {
       "get" : {
         "operationId" : "getNotificationPreferences",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "jwt",
-          "required" : true,
-          "schema" : {
-            "$ref" : "#/components/schemas/Jwt"
-          }
-        } ],
         "responses" : {
           "200" : {
             "content" : {
@@ -1011,14 +947,6 @@
       },
       "put" : {
         "operationId" : "putNotificationPreferences",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "jwt",
-          "required" : true,
-          "schema" : {
-            "$ref" : "#/components/schemas/Jwt"
-          }
-        } ],
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -1084,13 +1012,6 @@
           "schema" : {
             "type" : "string"
           }
-        }, {
-          "in" : "query",
-          "name" : "jwt",
-          "required" : true,
-          "schema" : {
-            "$ref" : "#/components/schemas/Jwt"
-          }
         } ],
         "responses" : {
           "200" : {
@@ -1120,13 +1041,6 @@
           "schema" : {
             "type" : "string"
           }
-        }, {
-          "in" : "query",
-          "name" : "jwt",
-          "required" : true,
-          "schema" : {
-            "$ref" : "#/components/schemas/Jwt"
-          }
         } ],
         "responses" : {
           "200" : {
@@ -1155,13 +1069,6 @@
           "required" : true,
           "schema" : {
             "type" : "string"
-          }
-        }, {
-          "in" : "query",
-          "name" : "jwt",
-          "required" : true,
-          "schema" : {
-            "$ref" : "#/components/schemas/Jwt"
           }
         } ],
         "requestBody" : {
@@ -1202,13 +1109,6 @@
           "schema" : {
             "type" : "string"
           }
-        }, {
-          "in" : "query",
-          "name" : "jwt",
-          "required" : true,
-          "schema" : {
-            "$ref" : "#/components/schemas/Jwt"
-          }
         } ],
         "responses" : {
           "200" : {
@@ -1235,13 +1135,6 @@
           "required" : true,
           "schema" : {
             "type" : "string"
-          }
-        }, {
-          "in" : "query",
-          "name" : "jwt",
-          "required" : true,
-          "schema" : {
-            "$ref" : "#/components/schemas/Jwt"
           }
         } ],
         "responses" : {
@@ -1272,13 +1165,6 @@
           "schema" : {
             "type" : "string"
           }
-        }, {
-          "in" : "query",
-          "name" : "jwt",
-          "required" : true,
-          "schema" : {
-            "$ref" : "#/components/schemas/Jwt"
-          }
         } ],
         "requestBody" : {
           "content" : {
@@ -1297,9 +1183,6 @@
                   },
                   "comment" : {
                     "$ref" : "#/components/schemas/CitizenCommentDto"
-                  },
-                  "jwt" : {
-                    "$ref" : "#/components/schemas/Jwt"
                   }
                 },
                 "required" : [ "comment" ]
@@ -1343,13 +1226,6 @@
           "schema" : {
             "type" : "string"
           }
-        }, {
-          "in" : "query",
-          "name" : "jwt",
-          "required" : true,
-          "schema" : {
-            "$ref" : "#/components/schemas/Jwt"
-          }
         } ],
         "responses" : {
           "200" : {
@@ -1377,13 +1253,6 @@
           "schema" : {
             "type" : "string"
           }
-        }, {
-          "in" : "query",
-          "name" : "jwt",
-          "required" : true,
-          "schema" : {
-            "$ref" : "#/components/schemas/Jwt"
-          }
         } ],
         "responses" : {
           "200" : {
@@ -1409,13 +1278,6 @@
           "required" : true,
           "schema" : {
             "type" : "string"
-          }
-        }, {
-          "in" : "query",
-          "name" : "jwt",
-          "required" : true,
-          "schema" : {
-            "$ref" : "#/components/schemas/Jwt"
           }
         } ],
         "requestBody" : {
@@ -1459,13 +1321,6 @@
           "schema" : {
             "type" : "string"
           }
-        }, {
-          "in" : "query",
-          "name" : "jwt",
-          "required" : true,
-          "schema" : {
-            "$ref" : "#/components/schemas/Jwt"
-          }
         } ],
         "requestBody" : {
           "content" : {
@@ -1504,13 +1359,6 @@
           "required" : true,
           "schema" : {
             "type" : "string"
-          }
-        }, {
-          "in" : "query",
-          "name" : "jwt",
-          "required" : true,
-          "schema" : {
-            "$ref" : "#/components/schemas/Jwt"
           }
         } ],
         "requestBody" : {
@@ -1551,13 +1399,6 @@
           "schema" : {
             "type" : "string"
           }
-        }, {
-          "in" : "query",
-          "name" : "jwt",
-          "required" : true,
-          "schema" : {
-            "$ref" : "#/components/schemas/Jwt"
-          }
         } ],
         "responses" : {
           "200" : {
@@ -1581,7 +1422,6 @@
   "components" : {
     "schemas" : {
       "AssignRequestDto" : {
-        "required" : [ "assigneeId" ],
         "type" : "object",
         "properties" : {
           "assigneeId" : {
@@ -1592,7 +1432,8 @@
             "minLength" : 0,
             "type" : "string"
           }
-        }
+        },
+        "required" : [ "assigneeId" ]
       },
       "ChangeStatusDto" : {
         "type" : "object",
@@ -1617,7 +1458,6 @@
         }
       },
       "CreateRequestDto" : {
-        "required" : [ "address", "description", "procedureType" ],
         "type" : "object",
         "properties" : {
           "address" : {
@@ -1658,55 +1498,8 @@
             "minLength" : 0,
             "type" : "string"
           }
-        }
-      },
-      "Jwt" : {
-        "type" : "object",
-        "properties" : {
-          "audience" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
-            }
-          },
-          "claims" : {
-            "type" : "object",
-            "additionalProperties" : {
-              "type" : "object"
-            }
-          },
-          "expiresAt" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "headers" : {
-            "type" : "object",
-            "additionalProperties" : {
-              "type" : "object"
-            }
-          },
-          "id" : {
-            "type" : "string"
-          },
-          "issuedAt" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "issuer" : {
-            "type" : "string",
-            "format" : "url"
-          },
-          "notBefore" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "subject" : {
-            "type" : "string"
-          },
-          "tokenValue" : {
-            "type" : "string"
-          }
-        }
+        },
+        "required" : [ "address", "description", "procedureType" ]
       },
       "RateRequestDto" : {
         "type" : "object",
